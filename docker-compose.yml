@@ -1,0 +1,15 @@
+services:
+  db:
+    image: postgres:16
+    container_name: taskmaster-db
+    environment:
+      POSTGRES_USER: taskmaster
+      POSTGRES_PASSWORD: taskmaster_dev_pw
+      POSTGRES_DB: taskmaster
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:

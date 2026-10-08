@@ -1,0 +1,15 @@
+# env files
+.env
+*.env.local
+
+# Go
+backend/bin/
+*.exe
+
+# Node
+node_modules/
+dist/
+
+# OS / editor
+.DS_Store
+.vscode/
