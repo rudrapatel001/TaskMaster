@@ -92,3 +92,29 @@ revoke an expired pending invitation before re-inviting the same email.
 ## Invitations cannot grant the owner role
 
 Ownership changes only through an existing owner promoting a member, never through a link.
+
+## Backend layout
+
+cmd/api/main.go only wires things together. Everything else lives under internal/ (config, database,
+handlers, router), which Go prevents other modules from importing. Services and repositories will be
+added when there is code for them.
+
+## Graceful shutdown and server timeouts
+
+The server listens for Ctrl+C / SIGTERM, stops accepting new requests, lets in-flight ones finish
+(up to 10s), then closes the database pool. The http.Server sets read/write/idle timeouts so slow
+clients cannot hold connections open indefinitely.
+
+## Config from environment, .env as a dev convenience
+
+Settings come from environment variables; backend/.env is loaded only if present and never overrides
+variables that are already set. Missing or invalid config stops the app at startup with a clear error.
+
+## Health endpoint checks the database
+
+/health pings the database with a 2s timeout and returns 503 if it is unreachable. The handler depends
+on a small Pinger interface rather than the pgx pool, so tests can inject a fake.
+
+## Structured logging with log/slog
+
+Text output in development, JSON in production.

@@ -1,20 +1,85 @@
 package main
 
 import (
-	"log"
+	"context"
+	"errors"
+	"fmt"
+	"log/slog"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
-	"github.com/go-chi/chi/v5"
+	"github.com/rudrapatel001/taskmaster/backend/internal/config"
+	"github.com/rudrapatel001/taskmaster/backend/internal/database"
+	"github.com/rudrapatel001/taskmaster/backend/internal/router"
 )
 
 func main() {
-	r := chi.NewRouter()
+	if err := run(); err != nil {
+		slog.Error("fatal error", "error", err)
+		os.Exit(1)
+	}
+}
 
-	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(`{"status":"ok"}`))
-	})
+func run() error {
+	cfg, err := config.Load()
+	if err != nil {
+		return err
+	}
 
-	log.Println("server listening on :8080")
-	log.Fatal(http.ListenAndServe(":8080", r))
+	logger := newLogger(cfg.Env)
+
+	// ctx is cancelled when the process receives Ctrl+C or SIGTERM.
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	pool, err := database.NewPool(ctx, cfg.DatabaseURL)
+	if err != nil {
+		return err
+	}
+	defer pool.Close()
+	logger.Info("database connected")
+
+	srv := &http.Server{
+		Addr:              ":" + cfg.Port,
+		Handler:           router.New(logger, pool),
+		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       15 * time.Second,
+		WriteTimeout:      30 * time.Second,
+		IdleTimeout:       60 * time.Second,
+	}
+
+	serverErr := make(chan error, 1)
+	go func() {
+		logger.Info("server listening", "addr", srv.Addr, "env", cfg.Env)
+		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			serverErr <- err
+		}
+	}()
+
+	select {
+	case err := <-serverErr:
+		return fmt.Errorf("server error: %w", err)
+	case <-ctx.Done():
+		logger.Info("shutting down")
+	}
+
+	// Give in-flight requests up to 10 seconds to finish.
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if err := srv.Shutdown(shutdownCtx); err != nil {
+		return fmt.Errorf("graceful shutdown failed: %w", err)
+	}
+
+	logger.Info("server stopped")
+	return nil
+}
+
+func newLogger(env string) *slog.Logger {
+	if env == "production" {
+		return slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	}
+	return slog.New(slog.NewTextHandler(os.Stdout, nil))
 }
