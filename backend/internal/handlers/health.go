@@ -5,6 +5,8 @@ import (
 	"log/slog"
 	"net/http"
 	"time"
+
+	"github.com/rudrapatel001/taskmaster/backend/internal/response"
 )
 
 // Pinger is anything that can check whether the database is reachable.
@@ -18,18 +20,21 @@ type HealthHandler struct {
 	Logger *slog.Logger
 }
 
+type healthResponse struct {
+	Status   string `json:"status"`
+	Database string `json:"database"`
+}
+
 func (h *HealthHandler) Check(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
 	defer cancel()
 
-	w.Header().Set("Content-Type", "application/json")
-
 	if err := h.DB.Ping(ctx); err != nil {
 		h.Logger.Error("health check: database ping failed", "error", err)
-		w.WriteHeader(http.StatusServiceUnavailable)
-		_, _ = w.Write([]byte(`{"status":"unavailable","database":"down"}`))
+		response.JSON(w, http.StatusServiceUnavailable,
+			healthResponse{Status: "unavailable", Database: "down"})
 		return
 	}
 
-	_, _ = w.Write([]byte(`{"status":"ok","database":"up"}`))
+	response.JSON(w, http.StatusOK, healthResponse{Status: "ok", Database: "up"})
 }

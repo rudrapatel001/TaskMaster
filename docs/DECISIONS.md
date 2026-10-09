@@ -118,3 +118,31 @@ on a small Pinger interface rather than the pgx pool, so tests can inject a fake
 ## Structured logging with log/slog
 
 Text output in development, JSON in production.
+
+## Standard response shapes
+
+Success: {"data": ...}. Failure: {"error": {"code", "message", "request_id"}}. The frontend branches on
+the stable machine-readable code, never on the human message. /health is deliberately unwrapped because
+it serves infrastructure, not the frontend.
+
+## Request IDs generated server-side
+
+Every request gets a random ID, returned in the X-Request-ID header, included in error bodies, and
+logged on every line for that request. Incoming IDs are ignored (simpler, and clients cannot inject
+text into logs). Revisit if a proxy that sets its own IDs is added in front.
+
+## Middleware order: RequestID, Logger, Recoverer
+
+Recoverer sits inside Logger so a recovered panic becomes a normal 500 that the logger records.
+Reversing them would lose the request log line for panics.
+
+## Own Recoverer, chi's response wrapper
+
+The recoverer is custom so panics produce our JSON error format and structured logs. The logger uses
+chi's response-writer wrapper instead of a hand-written one because it preserves Flusher/Hijacker
+support needed for WebSockets later.
+
+## Log levels follow status codes; query strings are not logged
+
+5xx logs at ERROR, 4xx at WARN, the rest at INFO. Only the URL path is logged because query strings
+can carry tokens.
