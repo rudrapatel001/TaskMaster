@@ -70,3 +70,25 @@ editing migration 3.
 
 comments.author_id is SET NULL on user deletion so discussions are preserved; the UI shows
 "Deleted user". Comments are hard-deleted, and updated_at is set by Go on edit so the UI can show "(edited)".
+
+## Activity logs reference entities without foreign keys
+
+activity_logs.entity_id is intentionally not a foreign key, so history survives deletion of the
+entity it describes. The metadata JSONB column stores a snapshot (e.g. old and new status names)
+because names can change later. Trade-off: the database cannot verify entity_id, so only the
+service layer writes logs. Logs are append-only and cascade-delete only with their workspace.
+
+## Invitation tokens are stored hashed
+
+Same reasoning as refresh tokens: a database leak should not let anyone accept an invitation.
+The raw token only appears in the emailed link.
+
+## Invitation state is derived, not stored
+
+Pending = not accepted, not revoked, not expired. A partial unique index allows only one pending
+invitation per email per workspace. Because now() cannot appear in an index, the service must
+revoke an expired pending invitation before re-inviting the same email.
+
+## Invitations cannot grant the owner role
+
+Ownership changes only through an existing owner promoting a member, never through a link.
