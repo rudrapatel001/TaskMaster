@@ -1,0 +1,4 @@
+DROP TABLE IF EXISTS task_labels;
+DROP TABLE IF EXISTS labels;
+DROP TABLE IF EXISTS comments;
+ALTER TABLE tasks DROP CONSTRAINT IF EXISTS tasks_id_project_unique;

@@ -52,3 +52,21 @@ inherent order that sorting and filtering depend on; display names can be custom
 ## Assignee must be a workspace member (enforced in code)
 
 A foreign key cannot express "assignee belongs to this workspace", so the Go service validates it.
+
+## Labels are per project, enforced with composite foreign keys
+
+task_labels stores project_id and references both (task_id, project_id) and (label_id, project_id),
+so the database guarantees a label can only be attached to a task in the same project, same pattern
+as task statuses. Trade-off: each project manages its own labels instead of sharing workspace-wide ones.
+Workspace-wide labels would have required a check in application code.
+
+## Schema changes go in new migrations
+
+tasks needed a new UNIQUE (id, project_id) constraint for the label foreign key. Because migration 3
+was already pushed and built on, the change went into migration 4 via ALTER TABLE instead of
+editing migration 3.
+
+## Comments survive their author leaving
+
+comments.author_id is SET NULL on user deletion so discussions are preserved; the UI shows
+"Deleted user". Comments are hard-deleted, and updated_at is set by Go on edit so the UI can show "(edited)".
