@@ -146,3 +146,28 @@ support needed for WebSockets later.
 
 5xx logs at ERROR, 4xx at WARN, the rest at INFO. Only the URL path is logged because query strings
 can carry tokens.
+
+## CORS: explicit origin allowlist, using go-chi/cors
+
+CORS is security-sensitive with subtle edge cases, so a maintained library is used instead of a custom
+middleware. Config requires a list of exact origins: "\*" is rejected, malformed entries (trailing slash,
+missing scheme) are rejected, and production refuses to start without it. This matters because the
+library treats an empty list as "allow every origin". AllowCredentials is on for the refresh-token cookie,
+which also requires explicit origins. CORS sits inside Logger so preflights are logged.
+
+## Two-stage request handling: decode (400), then validate (422)
+
+DecodeJSON handles malformed bodies; the validate package handles bad values and returns a per-field
+message map. The frontend can tell "you sent something broken" from "fix this field".
+
+## Strict JSON decoding
+
+Bodies are capped at 1 MiB, must be application/json, reject unknown fields (guards against mass
+assignment such as a client setting its own role), and reject trailing data after the JSON value.
+Go's raw decoder errors are translated into safe messages so internals are not exposed.
+
+## Hand-written validation helpers
+
+Small, dependency-free functions. Lengths count characters, not bytes, so non-ASCII names are not
+penalised. Email check is format-only. The first failure per field wins. Client-side validation (Zod) is
+for user experience only; the server always validates.
