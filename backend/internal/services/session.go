@@ -19,6 +19,11 @@ var (
 	// ErrInvalidRefreshToken means the token is unknown, expired, or revoked.
 	ErrInvalidRefreshToken = errors.New("invalid refresh token")
 
+	// ErrRefreshTokenInUse means the token was used a moment ago, most likely by
+	// a simultaneous request such as another browser tab. The caller should
+	// retry shortly, and must NOT delete the client's cookie.
+	ErrRefreshTokenInUse = errors.New("refresh token in use")
+
 	// ErrRefreshTokenReused means a long-since-used token was presented again,
 	// which suggests it was stolen. All of that user's sessions are ended.
 	ErrRefreshTokenReused = errors.New("refresh token reused")
@@ -44,7 +49,7 @@ func (s *AuthService) Refresh(ctx context.Context, refreshToken string) (*Sessio
 			}
 			return nil, ErrRefreshTokenReused
 		}
-		return nil, ErrInvalidRefreshToken
+		return nil, ErrRefreshTokenInUse
 	}
 
 	if time.Now().After(stored.ExpiresAt) {
@@ -57,7 +62,7 @@ func (s *AuthService) Refresh(ctx context.Context, refreshToken string) (*Sessio
 		return nil, err
 	}
 	if !revoked {
-		return nil, ErrInvalidRefreshToken
+		return nil, ErrRefreshTokenInUse
 	}
 
 	user, err := s.users.GetByID(ctx, stored.UserID)

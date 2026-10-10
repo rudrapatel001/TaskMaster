@@ -25,6 +25,12 @@ func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 			h.logger.Warn("refresh token reuse detected: all sessions for the user were revoked",
 				"request_id", middleware.RequestIDFromContext(r.Context()))
 			h.rejectRefresh(w)
+		case errors.Is(err, services.ErrRefreshTokenInUse):
+			// A simultaneous request (for example another tab) is refreshing with
+			// this same token. Leave the cookie alone: the winner has just set
+			// a new, valid one, and deleting it would log the user out.
+			response.Error(w, http.StatusConflict, response.CodeConflict,
+				"session is being refreshed, please retry")
 		case errors.Is(err, services.ErrInvalidRefreshToken):
 			h.rejectRefresh(w)
 		default:
