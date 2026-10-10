@@ -12,16 +12,25 @@ import (
 	"github.com/rudrapatel001/taskmaster/backend/internal/response"
 )
 
+// Deps is everything the router needs. As the app grows, new handlers are
+// added here instead of making New take ever more arguments.
+type Deps struct {
+	Logger         *slog.Logger
+	AllowedOrigins []string
+	Health         *handlers.HealthHandler
+	Auth           *handlers.AuthHandler
+}
+
 // New builds the HTTP router with all middleware and routes registered.
-func New(logger *slog.Logger, db handlers.Pinger, allowedOrigins []string) http.Handler {
+func New(d Deps) http.Handler {
 	r := chi.NewRouter()
 
 	// Order matters: the first one listed is the outermost layer.
 	r.Use(middleware.RequestID)
-	r.Use(middleware.Logger(logger))
-	r.Use(middleware.Recoverer(logger))
+	r.Use(middleware.Logger(d.Logger))
+	r.Use(middleware.Recoverer(d.Logger))
 	r.Use(cors.Handler(cors.Options{
-		AllowedOrigins:   allowedOrigins,
+		AllowedOrigins:   d.AllowedOrigins,
 		AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type"},
 		ExposedHeaders:   []string{"X-Request-Id"},
@@ -37,8 +46,11 @@ func New(logger *slog.Logger, db handlers.Pinger, allowedOrigins []string) http.
 		response.Error(w, http.StatusMethodNotAllowed, response.CodeMethodNotAllowed, "method not allowed")
 	})
 
-	health := &handlers.HealthHandler{DB: db, Logger: logger}
-	r.Get("/health", health.Check)
+	r.Get("/health", d.Health.Check)
+
+	r.Route("/auth", func(r chi.Router) {
+		r.Post("/register", d.Auth.Register)
+	})
 
 	return r
 }

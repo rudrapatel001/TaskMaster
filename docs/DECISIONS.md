@@ -171,3 +171,32 @@ Go's raw decoder errors are translated into safe messages so internals are not e
 Small, dependency-free functions. Lengths count characters, not bytes, so non-ASCII names are not
 penalised. Email check is format-only. The first failure per field wins. Client-side validation (Zod) is
 for user experience only; the server always validates.
+
+## Layered architecture: handler -> service -> repository
+
+Handlers own HTTP concerns (decoding, validation, status codes). Services own business rules and know
+nothing about HTTP or SQL. Repositories own SQL and know nothing about HTTP. The service defines the
+UserStore interface it needs, so tests can inject a fake. main.go is the composition root: it builds
+the layers bottom-up and passes handlers to the router through a Deps struct.
+
+## Hand-written pgx queries instead of sqlc (for now)
+
+Writing SQL by hand makes the row-to-struct mapping visible while learning. sqlc can replace it later
+without changing the service or handler layers.
+
+## Passwords: bcrypt cost 12, 8 characters minimum, 72 bytes maximum
+
+bcrypt is deliberately slow, and its salt is built into the stored hash. bcrypt ignores or rejects input
+beyond 72 bytes, so longer passwords are rejected up front rather than silently truncated. Length is
+enforced instead of composition rules. PasswordHash is tagged json:"-" so it can never be serialized.
+
+## Email uniqueness is enforced by the database
+
+Emails are trimmed and lowercased in the handler; the unique index on lower(email) is the real guard,
+which is race-free (6 simultaneous registrations produced exactly one account). Hashing happens before
+the insert, so duplicate and successful registrations take similar time. Trade-off accepted: registration
+returns 409, which reveals that an email is registered.
+
+## Never log request bodies
+
+Registration and login bodies contain passwords; only errors and request IDs are logged.

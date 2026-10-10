@@ -52,6 +52,12 @@ func MaxLen(s string, n int) bool {
 	return utf8.RuneCountInString(s) <= n
 }
 
+// MaxBytes is true if s is at most n bytes long. Use it for limits that are
+// really about bytes, such as bcrypt's 72-byte password limit.
+func MaxBytes(s string, n int) bool {
+	return len(s) <= n
+}
+
 // Email is true if s looks like a plain email address such as a@b.com.
 // It only checks the format; proving the address is real needs a confirmation email.
 func Email(s string) bool {

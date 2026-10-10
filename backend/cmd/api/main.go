@@ -13,7 +13,10 @@ import (
 
 	"github.com/rudrapatel001/taskmaster/backend/internal/config"
 	"github.com/rudrapatel001/taskmaster/backend/internal/database"
+	"github.com/rudrapatel001/taskmaster/backend/internal/handlers"
+	"github.com/rudrapatel001/taskmaster/backend/internal/repository"
 	"github.com/rudrapatel001/taskmaster/backend/internal/router"
+	"github.com/rudrapatel001/taskmaster/backend/internal/services"
 )
 
 func main() {
@@ -42,9 +45,20 @@ func run() error {
 	defer pool.Close()
 	logger.Info("database connected")
 
+	// Build the layers from the bottom up: repository -> service -> handler.
+	userRepo := repository.NewUserRepository(pool)
+	authService := services.NewAuthService(userRepo)
+
+	handler := router.New(router.Deps{
+		Logger:         logger,
+		AllowedOrigins: cfg.CORSOrigins,
+		Health:         &handlers.HealthHandler{DB: pool, Logger: logger},
+		Auth:           handlers.NewAuthHandler(authService, logger),
+	})
+
 	srv := &http.Server{
 		Addr:              ":" + cfg.Port,
-		Handler:           router.New(logger, pool, cfg.CORSOrigins),
+		Handler:           handler,
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       15 * time.Second,
 		WriteTimeout:      30 * time.Second,
