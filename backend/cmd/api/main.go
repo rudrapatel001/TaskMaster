@@ -11,6 +11,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/rudrapatel001/taskmaster/backend/internal/auth"
 	"github.com/rudrapatel001/taskmaster/backend/internal/config"
 	"github.com/rudrapatel001/taskmaster/backend/internal/database"
 	"github.com/rudrapatel001/taskmaster/backend/internal/handlers"
@@ -47,13 +48,15 @@ func run() error {
 
 	// Build the layers from the bottom up: repository -> service -> handler.
 	userRepo := repository.NewUserRepository(pool)
-	authService := services.NewAuthService(userRepo)
+	refreshTokenRepo := repository.NewRefreshTokenRepository(pool)
+	tokenManager := auth.NewTokenManager(cfg.JWTSecret, 15*time.Minute)
+	authService := services.NewAuthService(userRepo, refreshTokenRepo, tokenManager)
 
 	handler := router.New(router.Deps{
 		Logger:         logger,
 		AllowedOrigins: cfg.CORSOrigins,
 		Health:         &handlers.HealthHandler{DB: pool, Logger: logger},
-		Auth:           handlers.NewAuthHandler(authService, logger),
+		Auth:           handlers.NewAuthHandler(authService, logger, cfg.SecureCookies),
 	})
 
 	srv := &http.Server{

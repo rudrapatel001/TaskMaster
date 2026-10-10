@@ -16,6 +16,9 @@ type Config struct {
 	Port        string
 	DatabaseURL string
 	CORSOrigins []string // frontend origins allowed to call the API
+
+	JWTSecret     string // key used to sign access tokens
+	SecureCookies bool   // mark cookies "Secure" (HTTPS only); on in production
 }
 
 // Load reads configuration from the environment, using backend/.env as a
@@ -55,6 +58,18 @@ func Load() (*Config, error) {
 		return nil, errors.New("CORS_ALLOWED_ORIGINS must contain at least one origin")
 	}
 	cfg.CORSOrigins = origins
+
+	cfg.JWTSecret = strings.TrimSpace(os.Getenv("JWT_SECRET"))
+	if len(cfg.JWTSecret) < 32 {
+		return nil, errors.New("JWT_SECRET must be at least 32 characters; generate a random one (see README)")
+	}
+	if strings.HasPrefix(strings.ToLower(cfg.JWTSecret), "change-me") {
+		return nil, errors.New("JWT_SECRET is still the placeholder value; generate a random one")
+	}
+
+	// Browsers only send "Secure" cookies over HTTPS, so this stays off for
+	// local development on http://localhost.
+	cfg.SecureCookies = cfg.Env == "production"
 
 	return cfg, nil
 }

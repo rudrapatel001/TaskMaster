@@ -55,6 +55,12 @@ docker compose up -d
 Copy `backend/.env.example` to `backend/.env` and set the values. The database
 credentials must match those in `docker-compose.yml`.
 
+Generate a random `JWT_SECRET` (PowerShell):
+
+    $b = New-Object byte[] 32
+    [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($b)
+    ($b | ForEach-Object { $_.ToString('x2') }) -join ''
+
 ### 3. Apply the migrations
 
 From the `backend` folder:

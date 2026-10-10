@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -13,6 +14,9 @@ import (
 
 // ErrEmailTaken is returned when an account with the same email already exists.
 var ErrEmailTaken = errors.New("email already taken")
+
+// ErrNotFound is returned when a lookup matches no row.
+var ErrNotFound = errors.New("not found")
 
 // Postgres error code for "unique constraint violated".
 const pgUniqueViolation = "23505"
@@ -43,6 +47,28 @@ func (r *UserRepository) Create(ctx context.Context, email, name, passwordHash s
 			return nil, ErrEmailTaken
 		}
 		return nil, fmt.Errorf("inserting user: %w", err)
+	}
+
+	return &u, nil
+}
+
+// GetByEmail finds a user by email, ignoring capitalization.
+func (r *UserRepository) GetByEmail(ctx context.Context, email string) (*models.User, error) {
+	// The index is on lower(email), so the query must use the same expression.
+	const query = `
+		SELECT id, email, name, password_hash, created_at, updated_at
+		FROM users
+		WHERE lower(email) = lower($1)`
+
+	var u models.User
+	err := r.db.QueryRow(ctx, query, email).Scan(
+		&u.ID, &u.Email, &u.Name, &u.PasswordHash, &u.CreatedAt, &u.UpdatedAt,
+	)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrNotFound
+		}
+		return nil, fmt.Errorf("querying user by email: %w", err)
 	}
 
 	return &u, nil

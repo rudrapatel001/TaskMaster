@@ -200,3 +200,35 @@ returns 409, which reveals that an email is registered.
 ## Never log request bodies
 
 Registration and login bodies contain passwords; only errors and request IDs are logged.
+
+## Two-token sessions: short-lived JWT access token + revocable refresh token
+
+Access token: HS256 JWT, 15 minutes, carrying only the user id. It is verified by signature alone (no DB
+lookup) and cannot be revoked early, which is why it is short-lived. The algorithm is pinned to HS256 so
+"alg: none" and algorithm-switching attacks are refused. Refresh token: 32 random bytes, 30 days, stored
+only as a SHA-256 hash in refresh_tokens so it can be revoked. Each login creates a new row, so devices
+are independent sessions.
+
+## SHA-256 for refresh tokens, bcrypt for passwords
+
+Passwords are human-chosen and guessable, so they need a deliberately slow hash. Refresh tokens carry 256
+bits of randomness and cannot be guessed, and they must be looked up by hash, which a per-hash salt (bcrypt)
+would make impossible.
+
+## Where tokens live in the browser
+
+Refresh token: HttpOnly, SameSite=Strict, Path=/auth cookie (Secure in production), invisible to JavaScript,
+never in the response body. Access token: in the response body, kept in memory by the frontend, never in
+localStorage, so an XSS bug cannot read long-lived credentials. Revisit cookie SameSite/domain settings in
+the deployment phase if the frontend and API end up on different sites.
+
+## Login leaks nothing
+
+Wrong email and wrong password return the same 401 message and take the same time (a dummy bcrypt
+comparison runs for unknown emails). No password rules are enforced at login. Over-long passwords are
+rejected without calling bcrypt. Responses carrying tokens are Cache-Control: no-store.
+
+## JWT_SECRET is validated at startup
+
+At least 32 characters, and the placeholder value is rejected, so the app cannot run with a weak or
+default signing key. The secret is never committed; .env.example holds a deliberately invalid placeholder.
