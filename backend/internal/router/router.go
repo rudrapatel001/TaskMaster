@@ -3,6 +3,7 @@ package router
 import (
 	"log/slog"
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/cors"
@@ -19,6 +20,10 @@ type Deps struct {
 	AllowedOrigins []string
 	Health         *handlers.HealthHandler
 	Auth           *handlers.AuthHandler
+	Users          *handlers.UserHandler
+
+	// Authenticate is the middleware that protects routes needing a login.
+	Authenticate func(http.Handler) http.Handler
 }
 
 // New builds the HTTP router with all middleware and routes registered.
@@ -48,11 +53,20 @@ func New(d Deps) http.Handler {
 
 	r.Get("/health", d.Health.Check)
 
+	// Each of these has its own counter. Registering and logging in are the
+	// expensive ones (password hashing), so they get the strictest limits.
 	r.Route("/auth", func(r chi.Router) {
-		r.Post("/register", d.Auth.Register)
-		r.Post("/login", d.Auth.Login)
-		r.Post("/refresh", d.Auth.Refresh)
+		r.With(middleware.RateLimit(5, time.Minute)).Post("/register", d.Auth.Register)
+		r.With(middleware.RateLimit(10, time.Minute)).Post("/login", d.Auth.Login)
+		r.With(middleware.RateLimit(30, time.Minute)).Post("/refresh", d.Auth.Refresh)
 		r.Post("/logout", d.Auth.Logout)
+	})
+
+	// Everything in this group requires a valid access token.
+	r.Group(func(r chi.Router) {
+		r.Use(d.Authenticate)
+		r.Get("/me", d.Users.Me)
+		r.Patch("/me", d.Users.UpdateMe)
 	})
 
 	return r

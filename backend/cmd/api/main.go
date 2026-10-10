@@ -15,6 +15,7 @@ import (
 	"github.com/rudrapatel001/taskmaster/backend/internal/config"
 	"github.com/rudrapatel001/taskmaster/backend/internal/database"
 	"github.com/rudrapatel001/taskmaster/backend/internal/handlers"
+	"github.com/rudrapatel001/taskmaster/backend/internal/middleware"
 	"github.com/rudrapatel001/taskmaster/backend/internal/repository"
 	"github.com/rudrapatel001/taskmaster/backend/internal/router"
 	"github.com/rudrapatel001/taskmaster/backend/internal/services"
@@ -51,12 +52,15 @@ func run() error {
 	refreshTokenRepo := repository.NewRefreshTokenRepository(pool)
 	tokenManager := auth.NewTokenManager(cfg.JWTSecret, 15*time.Minute)
 	authService := services.NewAuthService(userRepo, refreshTokenRepo, tokenManager)
+	userService := services.NewUserService(userRepo)
 
 	handler := router.New(router.Deps{
 		Logger:         logger,
 		AllowedOrigins: cfg.CORSOrigins,
 		Health:         &handlers.HealthHandler{DB: pool, Logger: logger},
 		Auth:           handlers.NewAuthHandler(authService, logger, cfg.SecureCookies),
+		Users:          handlers.NewUserHandler(userService, logger),
+		Authenticate:   middleware.Authenticate(tokenManager),
 	})
 
 	srv := &http.Server{

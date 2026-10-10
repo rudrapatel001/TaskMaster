@@ -94,3 +94,25 @@ func (r *UserRepository) GetByID(ctx context.Context, id string) (*models.User, 
 
 	return &u, nil
 }
+
+// UpdateName changes a user's display name and returns the updated row.
+func (r *UserRepository) UpdateName(ctx context.Context, id, name string) (*models.User, error) {
+	const query = `
+		UPDATE users
+		SET name = $2, updated_at = now()
+		WHERE id = $1
+		RETURNING id, email, name, password_hash, created_at, updated_at`
+
+	var u models.User
+	err := r.db.QueryRow(ctx, query, id, name).Scan(
+		&u.ID, &u.Email, &u.Name, &u.PasswordHash, &u.CreatedAt, &u.UpdatedAt,
+	)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrNotFound
+		}
+		return nil, fmt.Errorf("updating user name: %w", err)
+	}
+
+	return &u, nil
+}

@@ -249,3 +249,22 @@ simultaneous refreshes with one token exactly one wins (tested: 1 success, 4 rej
 Access tokens are stateless and not stored, so they cannot be cancelled; they expire within 15 minutes.
 Logout is idempotent (always 204) and clears the cookie. Failed refreshes also clear the cookie.
 TODO later: periodically delete old expired/revoked refresh_tokens rows.
+
+## Protected routes via Authenticate middleware and request context
+
+The middleware verifies the Bearer access token and stores only the user id in the request context.
+Handlers get the user from the token, never from the body or URL, so one user cannot act as another.
+Valid-signature tokens for deleted accounts are rejected at the point of use (user lookup returns 401).
+401 means "not authenticated"; 403 (Phase 4) will mean "authenticated but not allowed".
+
+## Rate limiting: per client address, strict on expensive endpoints
+
+register 5/min, login 10/min, refresh 30/min, each with its own counter, applied before the handler so
+blocked requests skip password hashing. Clients are identified by connection address only; forwarded
+headers are ignored because they can be forged (tested). Limits are in memory and per-IP.
+TODO at deployment: trusted-proxy handling, since behind a proxy all clients share one address.
+
+## PATCH /me changes the name only
+
+Email and password changes need confirmation / current-password checks and are deferred.
+Unknown fields are rejected so a client cannot silently attempt to change other attributes.
