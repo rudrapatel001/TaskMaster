@@ -49,11 +49,16 @@ var dummyHash = func() []byte {
 type UserStore interface {
 	Create(ctx context.Context, email, name, passwordHash string) (*models.User, error)
 	GetByEmail(ctx context.Context, email string) (*models.User, error)
+	GetByID(ctx context.Context, id string) (*models.User, error)
 }
 
 // RefreshTokenStore is what AuthService needs to keep refresh tokens.
 type RefreshTokenStore interface {
 	Create(ctx context.Context, userID, tokenHash string, expiresAt time.Time) error
+	GetByHash(ctx context.Context, tokenHash string) (*models.RefreshToken, error)
+	Revoke(ctx context.Context, id string) (bool, error)
+	RevokeByHash(ctx context.Context, tokenHash string) error
+	RevokeAllForUser(ctx context.Context, userID string) error
 }
 
 type AuthService struct {

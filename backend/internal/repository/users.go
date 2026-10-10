@@ -73,3 +73,24 @@ func (r *UserRepository) GetByEmail(ctx context.Context, email string) (*models.
 
 	return &u, nil
 }
+
+// GetByID finds a user by id.
+func (r *UserRepository) GetByID(ctx context.Context, id string) (*models.User, error) {
+	const query = `
+		SELECT id, email, name, password_hash, created_at, updated_at
+		FROM users
+		WHERE id = $1`
+
+	var u models.User
+	err := r.db.QueryRow(ctx, query, id).Scan(
+		&u.ID, &u.Email, &u.Name, &u.PasswordHash, &u.CreatedAt, &u.UpdatedAt,
+	)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrNotFound
+		}
+		return nil, fmt.Errorf("querying user by id: %w", err)
+	}
+
+	return &u, nil
+}

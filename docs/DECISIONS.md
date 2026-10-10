@@ -232,3 +232,20 @@ rejected without calling bcrypt. Responses carrying tokens are Cache-Control: no
 
 At least 32 characters, and the placeholder value is rejected, so the app cannot run with a weak or
 default signing key. The secret is never committed; .env.example holds a deliberately invalid placeholder.
+
+## Refresh token rotation with reuse detection
+
+Every refresh revokes the old token and issues a new pair. Presenting a token that was revoked more than
+10 seconds ago is treated as theft: all of that user's sessions are revoked and a warning is logged.
+Within 10 seconds it is treated as a harmless race (two tabs, a double click) and just rejected.
+
+## Atomic revoke decides races
+
+Revoke is UPDATE ... WHERE revoked_at IS NULL and reports whether it changed a row, so of several
+simultaneous refreshes with one token exactly one wins (tested: 1 success, 4 rejections).
+
+## Logout revokes the refresh token only
+
+Access tokens are stateless and not stored, so they cannot be cancelled; they expire within 15 minutes.
+Logout is idempotent (always 204) and clears the cookie. Failed refreshes also clear the cookie.
+TODO later: periodically delete old expired/revoked refresh_tokens rows.

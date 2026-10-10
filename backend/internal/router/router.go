@@ -51,6 +51,8 @@ func New(d Deps) http.Handler {
 	r.Route("/auth", func(r chi.Router) {
 		r.Post("/register", d.Auth.Register)
 		r.Post("/login", d.Auth.Login)
+		r.Post("/refresh", d.Auth.Refresh)
+		r.Post("/logout", d.Auth.Logout)
 	})
 
 	return r
