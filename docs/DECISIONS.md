@@ -268,3 +268,25 @@ TODO at deployment: trusted-proxy handling, since behind a proxy all clients sha
 
 Email and password changes need confirmation / current-password checks and are deferred.
 Unknown fields are rejected so a client cannot silently attempt to change other attributes.
+
+## Frontend session model: access token in memory, refresh cookie restores it
+
+The access token lives in a module variable, never in localStorage, so a script injected into the page
+cannot read long-lived credentials. On every page load the app asks /auth/refresh to turn the HttpOnly
+cookie into a session. Auth state has three values (loading, anonymous, authenticated) so a logged-in
+user never sees a flash of the login page.
+
+## One API client; silent refresh on 401, single-flight
+
+All calls go through api(). A 401 triggers one refresh and one retry. Concurrent 401s share a single
+refresh, and a request whose 401 arrives after another request already refreshed just retries with the new
+token instead of refreshing again. 409 from /auth/refresh means "another tab is refreshing": wait and retry.
+
+## Backend fix: refresh race losers must not clear the cookie
+
+Found while designing the client. A concurrent refresh that lost the race used to receive a 401 that also
+deleted the cookie, which could delete the winner's new cookie. Losers now get 409 with no cookie change.
+
+## Hiding a page in React is not security
+
+ProtectedRoute is for user experience. Data protection is the backend's job (Authenticate, and role checks in next phase).

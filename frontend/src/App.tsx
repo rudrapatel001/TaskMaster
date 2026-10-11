@@ -1,8 +1,20 @@
+import { Navigate, Route, Routes } from 'react-router-dom'
+import { ProtectedRoute } from './auth/ProtectedRoute'
+import { HomePage } from './pages/HomePage'
+import { LoginPage } from './pages/LoginPage'
+
 function App() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-900">
-      <h1 className="text-4xl font-bold text-white">TaskMaster is alive</h1>
-    </div>
+    <Routes>
+      <Route path="/login" element={<LoginPage />} />
+
+      {/* Everything inside needs a login */}
+      <Route element={<ProtectedRoute />}>
+        <Route path="/" element={<HomePage />} />
+      </Route>
+
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   )
 }
 
