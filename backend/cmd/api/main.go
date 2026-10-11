@@ -53,6 +53,8 @@ func run() error {
 	tokenManager := auth.NewTokenManager(cfg.JWTSecret, 15*time.Minute)
 	authService := services.NewAuthService(userRepo, refreshTokenRepo, tokenManager)
 	userService := services.NewUserService(userRepo)
+	workspaceRepo := repository.NewWorkspaceRepository(pool)
+	workspaceService := services.NewWorkspaceService(workspaceRepo)
 
 	handler := router.New(router.Deps{
 		Logger:         logger,
@@ -60,6 +62,7 @@ func run() error {
 		Health:         &handlers.HealthHandler{DB: pool, Logger: logger},
 		Auth:           handlers.NewAuthHandler(authService, logger, cfg.SecureCookies),
 		Users:          handlers.NewUserHandler(userService, logger),
+		Workspaces:     handlers.NewWorkspaceHandler(workspaceService, logger),
 		Authenticate:   middleware.Authenticate(tokenManager),
 	})
 

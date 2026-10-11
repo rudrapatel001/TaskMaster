@@ -306,3 +306,27 @@ Label, input and error message live in one component so every form looks and beh
 
 After PATCH /me succeeds, updateUser replaces the user in the auth context so every part of the UI
 (greeting, future headers) updates immediately without refetching.
+
+## Roles are per workspace; permissions are checked, not role names
+
+A role (viewer < member < admin < owner) belongs to a membership, so one person can hold different roles in
+different workspaces. The code checks permissions via permissions.Can(role, permission), and the table is one
+fact per permission: the lowest role allowed. Unknown permissions and unknown roles are denied by default.
+A hand-written copy of the table in the tests fails if the code's table is changed by mistake.
+
+## Rules a permission table cannot express are enforced in services (Part 4C)
+
+Only manage people ranked below you; only grant roles below your own (owners excepted); a workspace always
+keeps at least one owner; anyone may leave unless they are the last owner.
+
+## Workspace creation is one transaction
+
+The workspace row and the creator's owner membership are inserted together, so a workspace can never exist
+without an owner. Slugs come from the name; the unique index is the referee, and the service retries with a
+random suffix on collision (tested with 8 simultaneous creations).
+
+## API uses ids; slugs are for pretty URLs
+
+Endpoints are keyed by workspace id (stable if a name ever changes). The frontend will use the slug in its
+URLs and resolve it from the list of the user's workspaces.
+TODO: cap the number of workspaces one user can own.

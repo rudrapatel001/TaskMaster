@@ -21,6 +21,7 @@ type Deps struct {
 	Health         *handlers.HealthHandler
 	Auth           *handlers.AuthHandler
 	Users          *handlers.UserHandler
+	Workspaces     *handlers.WorkspaceHandler
 
 	// Authenticate is the middleware that protects routes needing a login.
 	Authenticate func(http.Handler) http.Handler
@@ -67,6 +68,8 @@ func New(d Deps) http.Handler {
 		r.Use(d.Authenticate)
 		r.Get("/me", d.Users.Me)
 		r.Patch("/me", d.Users.UpdateMe)
+		r.Post("/workspaces", d.Workspaces.Create)
+		r.Get("/workspaces", d.Workspaces.List)
 	})
 
 	return r
