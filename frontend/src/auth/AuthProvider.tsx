@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { api, refreshSession, setAccessToken } from '../lib/api'
-import type { Session } from '../lib/api'
+import type { Session, User } from '../lib/api'
 import { AuthContext } from './AuthContext'
 import type { AuthContextValue, AuthState } from './AuthContext'
 
@@ -43,7 +43,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setState({ status: 'anonymous' })
   }, [])
 
-  const value = useMemo<AuthContextValue>(() => ({ state, login, logout }), [state, login, logout])
+  const updateUser = useCallback((user: User) => {
+    setState((current) => (current.status === 'authenticated' ? { status: 'authenticated', user } : current))
+  }, [])
+
+  const value = useMemo<AuthContextValue>(
+    () => ({ state, login, logout, updateUser }),
+    [state, login, logout, updateUser],
+  )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

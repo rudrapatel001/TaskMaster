@@ -2,8 +2,9 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Navigate, useLocation, useNavigate } from 'react-router-dom'
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
+import { TextField } from '../components/TextField'
 import { ApiError } from '../lib/api'
 
 // Login only checks that something was typed. Password rules are never shown
@@ -15,10 +16,16 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>
 
+interface LocationState {
+  from?: { pathname: string }
+  notice?: string
+}
+
 export function LoginPage() {
   const { state, login } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
+  const locationState = location.state as LocationState | null
   const [formError, setFormError] = useState<string | null>(null)
 
   const {
@@ -37,8 +44,7 @@ export function LoginPage() {
     setFormError(null)
     try {
       await login(values.email, values.password)
-      const from = (location.state as { from?: { pathname: string } } | null)?.from?.pathname
-      navigate(from ?? '/', { replace: true })
+      navigate(locationState?.from?.pathname ?? '/', { replace: true })
     } catch (err) {
       if (!(err instanceof ApiError)) {
         setFormError('Could not reach the server. Is the backend running?')
@@ -66,35 +72,34 @@ export function LoginPage() {
       >
         <h1 className="text-2xl font-bold text-white">Log in to TaskMaster</h1>
 
+        {locationState?.notice && (
+          <p role="status" className="mt-4 rounded-md bg-emerald-500/10 px-3 py-2 text-sm text-emerald-300">
+            {locationState.notice}
+          </p>
+        )}
+
         {formError && (
           <p role="alert" className="mt-4 rounded-md bg-red-500/10 px-3 py-2 text-sm text-red-300">
             {formError}
           </p>
         )}
 
-        <label className="mt-6 block text-sm text-slate-300" htmlFor="email">
-          Email
-        </label>
-        <input
+        <TextField
           id="email"
+          label="Email"
           type="email"
           autoComplete="email"
-          className="mt-1 w-full rounded-md bg-slate-900 px-3 py-2 text-white outline-none ring-1 ring-slate-600 focus:ring-2 focus:ring-indigo-400"
+          error={errors.email?.message}
           {...register('email')}
         />
-        {errors.email && <p className="mt-1 text-sm text-red-300">{errors.email.message}</p>}
-
-        <label className="mt-4 block text-sm text-slate-300" htmlFor="password">
-          Password
-        </label>
-        <input
+        <TextField
           id="password"
+          label="Password"
           type="password"
           autoComplete="current-password"
-          className="mt-1 w-full rounded-md bg-slate-900 px-3 py-2 text-white outline-none ring-1 ring-slate-600 focus:ring-2 focus:ring-indigo-400"
+          error={errors.password?.message}
           {...register('password')}
         />
-        {errors.password && <p className="mt-1 text-sm text-red-300">{errors.password.message}</p>}
 
         <button
           type="submit"
@@ -103,6 +108,13 @@ export function LoginPage() {
         >
           {isSubmitting ? 'Logging in…' : 'Log in'}
         </button>
+
+        <p className="mt-6 text-center text-sm text-slate-400">
+          New here?{' '}
+          <Link to="/register" className="text-indigo-300 hover:underline">
+            Create an account
+          </Link>
+        </p>
       </form>
     </div>
   )

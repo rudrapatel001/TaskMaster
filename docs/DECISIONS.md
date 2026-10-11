@@ -290,3 +290,19 @@ deleted the cookie, which could delete the winner's new cookie. Losers now get 4
 ## Hiding a page in React is not security
 
 ProtectedRoute is for user experience. Data protection is the backend's job (Authenticate, and role checks in next phase).
+
+## Forms validate in the browser and the server; server messages are shown per field
+
+Zod rules mirror the backend for instant feedback (including the 72-byte password limit, counted with
+TextEncoder so non-English characters are measured correctly). The server remains authoritative: its
+409 and 422 responses are mapped onto the right input. Register creates the account, then logs in; if the
+automatic login fails, the user is sent to /login with a notice instead of being left on a dead page.
+
+## Reusable TextField
+
+Label, input and error message live in one component so every form looks and behaves the same.
+
+## Profile edits update the shared auth state
+
+After PATCH /me succeeds, updateUser replaces the user in the auth context so every part of the UI
+(greeting, future headers) updates immediately without refetching.

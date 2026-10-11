@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { useAuth } from '../auth/AuthContext'
+import { NameForm } from '../components/NameForm'
 import { api, setAccessToken } from '../lib/api'
 import type { User } from '../lib/api'
 
 export function HomePage() {
-  const { state, logout } = useAuth()
+  const { state, logout, updateUser } = useAuth()
   const [result, setResult] = useState<string | null>(null)
 
   if (state.status !== 'authenticated') return null
@@ -34,6 +35,8 @@ export function HomePage() {
 
         <p className="mt-8 text-xl">Hi, {user.name}</p>
         <p className="text-slate-400">{user.email}</p>
+
+        <NameForm user={user} onSaved={updateUser} />
 
         {import.meta.env.DEV && (
           <div className="mt-10 rounded-xl border border-dashed border-slate-600 p-6">
