@@ -10,6 +10,7 @@ import (
 
 	"github.com/rudrapatel001/taskmaster/backend/internal/handlers"
 	"github.com/rudrapatel001/taskmaster/backend/internal/middleware"
+	"github.com/rudrapatel001/taskmaster/backend/internal/permissions"
 	"github.com/rudrapatel001/taskmaster/backend/internal/response"
 )
 
@@ -23,8 +24,11 @@ type Deps struct {
 	Users          *handlers.UserHandler
 	Workspaces     *handlers.WorkspaceHandler
 
-	// Authenticate is the middleware that protects routes needing a login.
+	// Authenticate protects routes that need a login.
 	Authenticate func(http.Handler) http.Handler
+	// WorkspaceAccess protects routes inside one workspace: it loads the
+	// caller's membership, or answers 404.
+	WorkspaceAccess func(http.Handler) http.Handler
 }
 
 // New builds the HTTP router with all middleware and routes registered.
@@ -66,10 +70,25 @@ func New(d Deps) http.Handler {
 	// Everything in this group requires a valid access token.
 	r.Group(func(r chi.Router) {
 		r.Use(d.Authenticate)
+
 		r.Get("/me", d.Users.Me)
 		r.Patch("/me", d.Users.UpdateMe)
+
 		r.Post("/workspaces", d.Workspaces.Create)
 		r.Get("/workspaces", d.Workspaces.List)
+
+		// Everything inside one workspace: first check the caller is a member
+		// (WorkspaceAccess), then check their role allows the action
+		// (RequirePermission).
+		r.Route("/workspaces/{workspaceID}", func(r chi.Router) {
+			r.Use(d.WorkspaceAccess)
+
+			r.With(middleware.RequirePermission(permissions.WorkspaceView)).Get("/", d.Workspaces.Get)
+			r.With(middleware.RequirePermission(permissions.WorkspaceUpdate)).Patch("/", d.Workspaces.Rename)
+			r.With(middleware.RequirePermission(permissions.WorkspaceDelete)).Delete("/", d.Workspaces.Delete)
+
+			r.With(middleware.RequirePermission(permissions.MembersView)).Get("/members", d.Workspaces.ListMembers)
+		})
 	})
 
 	return r

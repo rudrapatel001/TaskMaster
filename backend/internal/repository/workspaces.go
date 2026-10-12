@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -97,4 +98,89 @@ func (r *WorkspaceRepository) ListForUser(ctx context.Context, userID string) ([
 	}
 
 	return list, nil
+}
+
+// GetMembership returns a workspace together with the user's role in it.
+// It returns ErrNotFound if the user is not a member, or the workspace does
+// not exist: the two cases are deliberately indistinguishable.
+func (r *WorkspaceRepository) GetMembership(ctx context.Context, workspaceID, userID string) (*models.WorkspaceMembership, error) {
+	var m models.WorkspaceMembership
+	err := r.db.QueryRow(ctx, `
+		SELECT w.id, w.name, w.slug, w.created_at, w.updated_at, m.role
+		FROM workspace_members m
+		JOIN workspaces w ON w.id = m.workspace_id
+		WHERE m.workspace_id = $1 AND m.user_id = $2`,
+		workspaceID, userID,
+	).Scan(&m.ID, &m.Name, &m.Slug, &m.CreatedAt, &m.UpdatedAt, &m.Role)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrNotFound
+		}
+		return nil, fmt.Errorf("querying membership: %w", err)
+	}
+	return &m, nil
+}
+
+// Rename changes a workspace's name. The slug stays the same, so links keep working.
+func (r *WorkspaceRepository) Rename(ctx context.Context, workspaceID, name string) (*models.Workspace, error) {
+	var w models.Workspace
+	err := r.db.QueryRow(ctx, `
+		UPDATE workspaces
+		SET name = $2, updated_at = now()
+		WHERE id = $1
+		RETURNING id, name, slug, created_at, updated_at`,
+		workspaceID, name,
+	).Scan(&w.ID, &w.Name, &w.Slug, &w.CreatedAt, &w.UpdatedAt)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrNotFound
+		}
+		return nil, fmt.Errorf("renaming workspace: %w", err)
+	}
+	return &w, nil
+}
+
+// Delete removes a workspace. The database cascades the delete to everything
+// inside it (members, projects, tasks, ...).
+func (r *WorkspaceRepository) Delete(ctx context.Context, workspaceID string) error {
+	tag, err := r.db.Exec(ctx, `DELETE FROM workspaces WHERE id = $1`, workspaceID)
+	if err != nil {
+		return fmt.Errorf("deleting workspace: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+// ListMembers returns everyone in a workspace: owners first, then admins,
+// members and viewers, each group in the order they joined.
+func (r *WorkspaceRepository) ListMembers(ctx context.Context, workspaceID string) ([]models.Member, error) {
+	rows, err := r.db.Query(ctx, `
+		SELECT u.id, u.name, u.email, m.role, m.joined_at
+		FROM workspace_members m
+		JOIN users u ON u.id = m.user_id
+		WHERE m.workspace_id = $1
+		ORDER BY
+			CASE m.role WHEN 'owner' THEN 1 WHEN 'admin' THEN 2 WHEN 'member' THEN 3 ELSE 4 END,
+			m.joined_at, u.id`,
+		workspaceID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("listing members: %w", err)
+	}
+	defer rows.Close()
+
+	members := []models.Member{}
+	for rows.Next() {
+		var m models.Member
+		if err := rows.Scan(&m.UserID, &m.Name, &m.Email, &m.Role, &m.JoinedAt); err != nil {
+			return nil, fmt.Errorf("reading member row: %w", err)
+		}
+		members = append(members, m)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("reading member rows: %w", err)
+	}
+	return members, nil
 }

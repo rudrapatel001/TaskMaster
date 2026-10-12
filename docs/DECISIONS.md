@@ -330,3 +330,26 @@ random suffix on collision (tested with 8 simultaneous creations).
 Endpoints are keyed by workspace id (stable if a name ever changes). The frontend will use the slug in its
 URLs and resolve it from the list of the user's workspaces.
 TODO: cap the number of workspaces one user can own.
+
+## Roles are looked up per request, never stored in the access token
+
+A token cannot be changed or revoked during its 15 minutes, so a role inside it would keep working after a
+demotion or removal. Roles also belong to workspaces (one person, many memberships). The token proves who
+you are; the database says what you may do right now. Cost: one primary-key lookup per workspace request.
+Tested: demoting, promoting and removing a user takes effect on the very next request with the same token.
+
+## Non-members get 404, members without permission get 403
+
+A 403 would confirm that a workspace exists. Non-members receive the exact same 404 as for a workspace that
+does not exist (tested: byte-identical bodies). Malformed ids are rejected before reaching the database.
+
+## Two small middlewares: WorkspaceAccess then RequirePermission
+
+WorkspaceAccess loads the membership once and stores it in the request context; RequirePermission asks the
+permission table. Handlers act on the authorized workspace (membership.ID), not on the raw URL parameter.
+Both fail closed: a database error is a 500, and a missing membership is a refusal.
+
+## Slugs do not change on rename; deleting a workspace cascades
+
+Renaming keeps links working. Deleting is owner-only and removes everything inside via foreign-key cascades
+(the UI must ask for confirmation).

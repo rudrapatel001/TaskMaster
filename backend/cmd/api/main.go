@@ -57,13 +57,14 @@ func run() error {
 	workspaceService := services.NewWorkspaceService(workspaceRepo)
 
 	handler := router.New(router.Deps{
-		Logger:         logger,
-		AllowedOrigins: cfg.CORSOrigins,
-		Health:         &handlers.HealthHandler{DB: pool, Logger: logger},
-		Auth:           handlers.NewAuthHandler(authService, logger, cfg.SecureCookies),
-		Users:          handlers.NewUserHandler(userService, logger),
-		Workspaces:     handlers.NewWorkspaceHandler(workspaceService, logger),
-		Authenticate:   middleware.Authenticate(tokenManager),
+		Logger:          logger,
+		AllowedOrigins:  cfg.CORSOrigins,
+		Health:          &handlers.HealthHandler{DB: pool, Logger: logger},
+		Auth:            handlers.NewAuthHandler(authService, logger, cfg.SecureCookies),
+		Users:           handlers.NewUserHandler(userService, logger),
+		Workspaces:      handlers.NewWorkspaceHandler(workspaceService, logger),
+		Authenticate:    middleware.Authenticate(tokenManager),
+		WorkspaceAccess: middleware.WorkspaceAccess(workspaceService, logger),
 	})
 
 	srv := &http.Server{
