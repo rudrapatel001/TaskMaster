@@ -88,6 +88,9 @@ func New(d Deps) http.Handler {
 			r.With(middleware.RequirePermission(permissions.WorkspaceDelete)).Delete("/", d.Workspaces.Delete)
 
 			r.With(middleware.RequirePermission(permissions.MembersView)).Get("/members", d.Workspaces.ListMembers)
+			r.With(middleware.RequirePermission(permissions.MembersManage)).Patch("/members/{userID}", d.Workspaces.ChangeMemberRole)
+			r.With(middleware.RequirePermission(permissions.MembersManage)).Delete("/members/{userID}", d.Workspaces.RemoveMember)
+			r.With(middleware.RequirePermission(permissions.WorkspaceLeave)).Post("/leave", d.Workspaces.Leave)
 		})
 	})
 

@@ -353,3 +353,28 @@ Both fail closed: a database error is a 500, and a missing membership is a refus
 
 Renaming keeps links working. Deleting is owner-only and removes everything inside via foreign-key cascades
 (the UI must ask for confirmation).
+
+## Rules about people live in two pure functions
+
+CanChangeRole and CanRemove: owners manage anyone; admins only people ranked below them and only grant roles
+below their own; viewers and members manage nobody. Exhaustively unit-tested (all actor x target x role
+combinations). Admins therefore cannot demote themselves (not below their own rank); they can leave.
+
+## At least one owner, enforced under a lock
+
+Every membership change runs in a transaction that first locks the workspace row (FOR NO KEY UPDATE), so
+changes in one workspace happen one at a time, then counts owners. Tested with 25 simultaneous
+owner-vs-owner demotions and 25 simultaneous double-leaves: never zero owners, and exactly one request
+wins each time. The lock does not block reads or other workspaces.
+
+## Compare-and-swap on the target's role
+
+The service reads the target's role and decides; the repository re-checks it inside the lock and answers
+ErrMembershipChanged (409) if it moved in between.
+Known, accepted limit: the ACTOR's role is read once at the start of the request, so someone demoted a few
+milliseconds earlier can still finish one action.
+
+## Leaving is its own action
+
+POST /workspaces/{id}/leave with its own permission (workspace:leave, all roles). Removing yourself through
+DELETE /members/{id} returns 400 pointing to it.

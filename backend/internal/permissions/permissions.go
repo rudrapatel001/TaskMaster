@@ -9,6 +9,7 @@ const (
 	WorkspaceView   Permission = "workspace:view"
 	WorkspaceUpdate Permission = "workspace:update"
 	WorkspaceDelete Permission = "workspace:delete"
+	WorkspaceLeave  Permission = "workspace:leave"
 
 	MembersView   Permission = "members:view"
 	MembersInvite Permission = "members:invite"
@@ -31,6 +32,7 @@ var minimumRole = map[Permission]models.Role{
 	WorkspaceView:   models.RoleViewer,
 	WorkspaceUpdate: models.RoleAdmin,
 	WorkspaceDelete: models.RoleOwner,
+	WorkspaceLeave:  models.RoleViewer,
 
 	MembersView:   models.RoleViewer,
 	MembersInvite: models.RoleAdmin,

@@ -15,6 +15,15 @@ import (
 // ErrSlugTaken is returned when another workspace already uses the slug.
 var ErrSlugTaken = errors.New("workspace slug already taken")
 
+var (
+	// ErrLastOwner is returned when a change would leave a workspace without an owner.
+	ErrLastOwner = errors.New("workspace must keep at least one owner")
+
+	// ErrMembershipChanged is returned when someone's role is no longer what the
+	// caller read a moment ago, because another request changed it first.
+	ErrMembershipChanged = errors.New("membership changed")
+)
+
 // Postgres error code for "a referenced row does not exist".
 const pgForeignKeyViolation = "23503"
 
@@ -183,4 +192,144 @@ func (r *WorkspaceRepository) ListMembers(ctx context.Context, workspaceID strin
 		return nil, fmt.Errorf("reading member rows: %w", err)
 	}
 	return members, nil
+}
+
+// GetMember returns one member of a workspace.
+func (r *WorkspaceRepository) GetMember(ctx context.Context, workspaceID, userID string) (*models.Member, error) {
+	var m models.Member
+	err := r.db.QueryRow(ctx, `
+		SELECT u.id, u.name, u.email, m.role, m.joined_at
+		FROM workspace_members m
+		JOIN users u ON u.id = m.user_id
+		WHERE m.workspace_id = $1 AND m.user_id = $2`,
+		workspaceID, userID,
+	).Scan(&m.UserID, &m.Name, &m.Email, &m.Role, &m.JoinedAt)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrNotFound
+		}
+		return nil, fmt.Errorf("querying member: %w", err)
+	}
+	return &m, nil
+}
+
+// SetMemberRole changes a member's role from expected to newRole.
+//
+// All membership changes in one workspace happen one at a time (the workspace
+// row is locked), so the "at least one owner" check cannot be fooled by two
+// simultaneous requests. If the member's role is no longer expected, nothing
+// is changed and ErrMembershipChanged is returned.
+func (r *WorkspaceRepository) SetMemberRole(ctx context.Context, workspaceID, userID string, expected, newRole models.Role) (*models.Member, error) {
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("starting transaction: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	current, err := lockAndReadRole(ctx, tx, workspaceID, userID)
+	if err != nil {
+		return nil, err
+	}
+	if current != expected {
+		return nil, ErrMembershipChanged
+	}
+	if current == models.RoleOwner && newRole != models.RoleOwner {
+		if err := requireAnotherOwner(ctx, tx, workspaceID); err != nil {
+			return nil, err
+		}
+	}
+
+	if _, err := tx.Exec(ctx, `
+		UPDATE workspace_members SET role = $3
+		WHERE workspace_id = $1 AND user_id = $2`,
+		workspaceID, userID, newRole,
+	); err != nil {
+		return nil, fmt.Errorf("updating role: %w", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return nil, fmt.Errorf("committing role change: %w", err)
+	}
+	return r.GetMember(ctx, workspaceID, userID)
+}
+
+// RemoveMember removes a member whose role is expected. The same locking and
+// "at least one owner" rules as SetMemberRole apply.
+func (r *WorkspaceRepository) RemoveMember(ctx context.Context, workspaceID, userID string, expected models.Role) error {
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("starting transaction: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	current, err := lockAndReadRole(ctx, tx, workspaceID, userID)
+	if err != nil {
+		return err
+	}
+	if current != expected {
+		return ErrMembershipChanged
+	}
+	if current == models.RoleOwner {
+		if err := requireAnotherOwner(ctx, tx, workspaceID); err != nil {
+			return err
+		}
+	}
+
+	if _, err := tx.Exec(ctx, `
+		DELETE FROM workspace_members
+		WHERE workspace_id = $1 AND user_id = $2`,
+		workspaceID, userID,
+	); err != nil {
+		return fmt.Errorf("removing member: %w", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("committing removal: %w", err)
+	}
+	return nil
+}
+
+// lockAndReadRole locks the workspace row, so membership changes in this
+// workspace queue up one behind another, and returns the member's current role.
+func lockAndReadRole(ctx context.Context, tx pgx.Tx, workspaceID, userID string) (models.Role, error) {
+	var id string
+	err := tx.QueryRow(ctx, `SELECT id FROM workspaces WHERE id = $1 FOR NO KEY UPDATE`, workspaceID).Scan(&id)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return "", ErrNotFound
+		}
+		return "", fmt.Errorf("locking workspace: %w", err)
+	}
+
+	var role models.Role
+	err = tx.QueryRow(ctx, `
+		SELECT role FROM workspace_members
+		WHERE workspace_id = $1 AND user_id = $2`,
+		workspaceID, userID,
+	).Scan(&role)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return "", ErrNotFound
+		}
+		return "", fmt.Errorf("reading member role: %w", err)
+	}
+	return role, nil
+}
+
+// requireAnotherOwner returns ErrLastOwner unless the workspace has more than
+// one owner. Call it before demoting or removing an owner.
+func requireAnotherOwner(ctx context.Context, tx pgx.Tx, workspaceID string) error {
+	var owners int
+	err := tx.QueryRow(ctx, `
+		SELECT count(*) FROM workspace_members
+		WHERE workspace_id = $1 AND role = 'owner'`,
+		workspaceID,
+	).Scan(&owners)
+	if err != nil {
+		return fmt.Errorf("counting owners: %w", err)
+	}
+	if owners <= 1 {
+		return ErrLastOwner
+	}
+	return nil
 }

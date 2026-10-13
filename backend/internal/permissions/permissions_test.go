@@ -19,6 +19,7 @@ func TestCan(t *testing.T) {
 		WorkspaceView:   {V, M, A, O},
 		WorkspaceUpdate: {A, O},
 		WorkspaceDelete: {O},
+		WorkspaceLeave:  {V, M, A, O},
 		MembersView:     {V, M, A, O},
 		MembersInvite:   {A, O},
 		MembersManage:   {A, O},

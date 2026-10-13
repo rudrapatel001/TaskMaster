@@ -31,6 +31,9 @@ type WorkspaceStore interface {
 	Rename(ctx context.Context, workspaceID, name string) (*models.Workspace, error)
 	Delete(ctx context.Context, workspaceID string) error
 	ListMembers(ctx context.Context, workspaceID string) ([]models.Member, error)
+	GetMember(ctx context.Context, workspaceID, userID string) (*models.Member, error)
+	SetMemberRole(ctx context.Context, workspaceID, userID string, expected, newRole models.Role) (*models.Member, error)
+	RemoveMember(ctx context.Context, workspaceID, userID string, expected models.Role) error
 }
 
 type WorkspaceService struct {

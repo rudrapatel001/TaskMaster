@@ -2,9 +2,12 @@ package validate
 
 import (
 	"net/mail"
+	"regexp"
 	"strings"
 	"unicode/utf8"
 )
+
+var uuidPattern = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
 
 // Validator collects one error message per field.
 type Validator struct {
@@ -77,4 +80,10 @@ func OneOf(s string, allowed ...string) bool {
 		}
 	}
 	return false
+}
+
+// UUID is true if s looks like a UUID, for example 3567b73b-548b-466d-8426-95ba419ddf1b.
+// Use it on ids that come from URLs before they reach the database.
+func UUID(s string) bool {
+	return uuidPattern.MatchString(s)
 }

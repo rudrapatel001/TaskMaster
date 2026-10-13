@@ -13,6 +13,7 @@ import (
 	"github.com/rudrapatel001/taskmaster/backend/internal/permissions"
 	"github.com/rudrapatel001/taskmaster/backend/internal/response"
 	"github.com/rudrapatel001/taskmaster/backend/internal/services"
+	"github.com/rudrapatel001/taskmaster/backend/internal/validate"
 )
 
 // membershipKey is a private type, so only this package can read or write the value.
@@ -40,7 +41,7 @@ func WorkspaceAccess(loader MembershipLoader, logger *slog.Logger) func(http.Han
 			}
 
 			workspaceID := chi.URLParam(r, "workspaceID")
-			if !uuidPattern.MatchString(workspaceID) {
+			if !validate.UUID(workspaceID) {
 				workspaceNotFound(w) // not even shaped like an id: do not bother the database
 				return
 			}
