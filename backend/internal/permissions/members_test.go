@@ -73,3 +73,24 @@ func TestMemberRulesRejectUnknownRoles(t *testing.T) {
 		t.Error("unknown roles must never be accepted")
 	}
 }
+
+func TestCanInvite(t *testing.T) {
+	// For each actor: the roles they may invite. Nobody may invite an owner.
+	grants := map[models.Role][]models.Role{
+		viewer: nil,
+		member: nil,
+		admin:  {viewer, member},
+		owner:  {viewer, member, admin},
+	}
+	for _, actor := range allRoles {
+		for _, role := range allRoles {
+			want := contains(grants[actor], role)
+			if got := CanInvite(actor, role); got != want {
+				t.Errorf("CanInvite(actor=%s, role=%s) = %v, want %v", actor, role, got, want)
+			}
+		}
+	}
+	if CanInvite(owner, models.Role("superadmin")) {
+		t.Error("an unknown role must never be accepted")
+	}
+}

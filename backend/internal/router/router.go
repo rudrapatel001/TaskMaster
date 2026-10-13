@@ -23,6 +23,7 @@ type Deps struct {
 	Auth           *handlers.AuthHandler
 	Users          *handlers.UserHandler
 	Workspaces     *handlers.WorkspaceHandler
+	Invitations    *handlers.InvitationHandler
 
 	// Authenticate protects routes that need a login.
 	Authenticate func(http.Handler) http.Handler
@@ -58,6 +59,9 @@ func New(d Deps) http.Handler {
 
 	r.Get("/health", d.Health.Check)
 
+	// Anyone holding an invitation link may see what it is for, before logging in.
+	r.With(middleware.RateLimit(30, time.Minute)).Get("/invitations/{token}", d.Invitations.Preview)
+
 	// Each of these has its own counter. Registering and logging in are the
 	// expensive ones (password hashing), so they get the strictest limits.
 	r.Route("/auth", func(r chi.Router) {
@@ -73,6 +77,8 @@ func New(d Deps) http.Handler {
 
 		r.Get("/me", d.Users.Me)
 		r.Patch("/me", d.Users.UpdateMe)
+
+		r.With(middleware.RateLimit(10, time.Minute)).Post("/invitations/{token}/accept", d.Invitations.Accept)
 
 		r.Post("/workspaces", d.Workspaces.Create)
 		r.Get("/workspaces", d.Workspaces.List)
@@ -91,6 +97,9 @@ func New(d Deps) http.Handler {
 			r.With(middleware.RequirePermission(permissions.MembersManage)).Patch("/members/{userID}", d.Workspaces.ChangeMemberRole)
 			r.With(middleware.RequirePermission(permissions.MembersManage)).Delete("/members/{userID}", d.Workspaces.RemoveMember)
 			r.With(middleware.RequirePermission(permissions.WorkspaceLeave)).Post("/leave", d.Workspaces.Leave)
+			r.With(middleware.RequirePermission(permissions.MembersInvite)).Get("/invitations", d.Invitations.List)
+			r.With(middleware.RequirePermission(permissions.MembersInvite)).Post("/invitations", d.Invitations.Create)
+			r.With(middleware.RequirePermission(permissions.MembersInvite)).Delete("/invitations/{invitationID}", d.Invitations.Revoke)
 		})
 	})
 

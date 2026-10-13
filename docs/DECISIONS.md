@@ -378,3 +378,35 @@ milliseconds earlier can still finish one action.
 
 POST /workspaces/{id}/leave with its own permission (workspace:leave, all roles). Removing yourself through
 DELETE /members/{id} returns 400 pointing to it.
+
+## Invitations: one-time link tokens, hashed at rest
+
+A 256-bit random token is shown once, in the response that creates the invitation; only its SHA-256 hash is
+stored (checked: the raw token appears nowhere in the table). No email service yet, so the inviter copies the
+link. Invitations expire after 7 days and work once.
+
+## A link alone is not enough: the accepting account's email must match
+
+A leaked or forwarded link cannot let a stranger in. A mismatch gives 403 and leaves the link open.
+
+## Roles in invitations follow the same "only below your own" rule
+
+Admins invite members and viewers; owners invite admins, members and viewers; nobody can be invited as an
+owner, so ownership only changes through an existing owner (see 4C).
+
+## Re-inviting replaces the old link
+
+Creating an invitation revokes any open one for the same email in a transaction that locks the workspace, so
+at most one live link exists per email per workspace.
+
+## Accept is one transaction on a locked invitation row
+
+Verify open + unexpired, verify the email, verify not already a member, insert the membership, mark accepted.
+Five simultaneous accepts of one link gave exactly one membership (tested).
+
+## Public preview, uniform failures
+
+GET /invitations/{token} needs no login (the invitee may have no account yet), is rate-limited, shows only
+what the link holder already knows, and sends no-store. Unknown, expired, revoked and used links are all the
+same 404. Wrong-length tokens never reach the database.
+TODO (later): delete old expired invitations periodically; optional email delivery.

@@ -21,7 +21,7 @@ type changeRoleRequest struct {
 
 // ChangeMemberRole handles PATCH /workspaces/{workspaceID}/members/{userID}.
 func (h *WorkspaceHandler) ChangeMemberRole(w http.ResponseWriter, r *http.Request) {
-	actor, ok := h.actor(r)
+	actor, ok := actorFrom(r)
 	if !ok {
 		h.forbidden(w)
 		return
@@ -57,7 +57,7 @@ func (h *WorkspaceHandler) ChangeMemberRole(w http.ResponseWriter, r *http.Reque
 
 // RemoveMember handles DELETE /workspaces/{workspaceID}/members/{userID}.
 func (h *WorkspaceHandler) RemoveMember(w http.ResponseWriter, r *http.Request) {
-	actor, ok := h.actor(r)
+	actor, ok := actorFrom(r)
 	if !ok {
 		h.forbidden(w)
 		return
@@ -84,7 +84,7 @@ func (h *WorkspaceHandler) RemoveMember(w http.ResponseWriter, r *http.Request) 
 
 // Leave handles POST /workspaces/{workspaceID}/leave.
 func (h *WorkspaceHandler) Leave(w http.ResponseWriter, r *http.Request) {
-	actor, ok := h.actor(r)
+	actor, ok := actorFrom(r)
 	if !ok {
 		h.forbidden(w)
 		return
@@ -98,15 +98,21 @@ func (h *WorkspaceHandler) Leave(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// actor describes who is making this request, inside this workspace. It relies
-// on Authenticate and WorkspaceAccess having run.
-func (h *WorkspaceHandler) actor(r *http.Request) (services.Actor, bool) {
+// actorFrom describes who is making this request, inside this workspace. It
+// relies on Authenticate and WorkspaceAccess having run.
+func actorFrom(r *http.Request) (services.Actor, bool) {
 	userID, hasUser := middleware.UserIDFromContext(r.Context())
 	membership, hasMembership := middleware.MembershipFromContext(r.Context())
 	if !hasUser || !hasMembership {
 		return services.Actor{}, false
 	}
 	return services.Actor{WorkspaceID: membership.ID, UserID: userID, Role: membership.Role}, true
+}
+
+// forbidden answers a request that reached a handler without the context
+// (login and workspace membership) it needs. It should never happen.
+func forbidden(w http.ResponseWriter) {
+	response.Error(w, http.StatusForbidden, response.CodeForbidden, "you do not have permission to do that")
 }
 
 func (h *WorkspaceHandler) memberNotFound(w http.ResponseWriter) {

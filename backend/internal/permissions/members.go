@@ -35,3 +35,16 @@ func CanRemove(actor, target models.Role) bool {
 	}
 	return target.Rank() < actor.Rank()
 }
+
+// CanInvite reports whether actor may invite someone with the given role.
+// Nobody can be invited straight in as an owner: ownership is handed over by an
+// existing owner, never through a link.
+func CanInvite(actor, role models.Role) bool {
+	if !Can(actor, MembersInvite) || !role.Valid() || role == models.RoleOwner {
+		return false
+	}
+	if actor == models.RoleOwner {
+		return true
+	}
+	return role.Rank() < actor.Rank()
+}
