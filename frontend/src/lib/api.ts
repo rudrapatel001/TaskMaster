@@ -49,6 +49,15 @@ export function setAccessToken(token: string | null): void {
   accessToken = token
 }
 
+// Called when a logged-in request still fails with 401 after a refresh
+// attempt, which means the session is really over. The auth provider uses it
+// to send the user back to the login page.
+let onSessionExpired: (() => void) | null = null
+
+export function setSessionExpiredHandler(handler: (() => void) | null): void {
+  onSessionExpired = handler
+}
+
 interface RequestOptions {
   method?: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE'
   body?: unknown
@@ -121,6 +130,8 @@ export async function api<T>(path: string, options: RequestOptions = {}): Promis
       const session = await refreshSession()
       if (session) res = await send(path, options)
     }
+
+    if (res.status === 401) onSessionExpired?.()
   }
 
   return parse<T>(res)

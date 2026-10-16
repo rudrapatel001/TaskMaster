@@ -35,9 +35,10 @@ export function LoginPage() {
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({ resolver: zodResolver(schema) })
 
-  // Already logged in? Nothing to do here.
+  // Already logged in? Nothing to do here. This also fires right after a
+  // successful login, so it must send you where you were going, not just home.
   if (state.status === 'authenticated') {
-    return <Navigate to="/" replace />
+    return <Navigate to={locationState?.from?.pathname ?? '/'} replace />
   }
 
   async function onSubmit(values: FormValues) {

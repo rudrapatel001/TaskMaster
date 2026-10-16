@@ -410,3 +410,26 @@ GET /invitations/{token} needs no login (the invitee may have no account yet), i
 what the link holder already knows, and sends no-store. Unknown, expired, revoked and used links are all the
 same 404. Wrong-length tokens never reach the database.
 TODO (later): delete old expired invitations periodically; optional email delivery.
+
+## Workspace data lives in TanStack Query's cache
+
+useWorkspaces is the single source for the list; create, rename, delete and leave update the cache by hand
+on success so the header dropdown, page and settings change together. The cache is cleared on login and
+logout (and on session expiry) so one user never sees another's data, and logout cancels in-flight queries
+first so nothing refetches while logged out.
+
+## Session end is handled in one place
+
+api() reports a 401 that survives a refresh attempt through a handler; the auth provider answers by clearing
+the session and cache and showing the login page.
+
+## "Where was I going" is remembered after expiry, not after logout
+
+The login page returns you to the protected page you were heading to. After an explicit logout nothing is
+remembered, so the next person to log in is not sent to the previous user's workspace URL.
+
+## The UI hides what a role cannot do; the backend decides
+
+permissions.ts duplicates the backend's table to decide which buttons to show. If the server still refuses
+(role changed behind the page's back), its message is shown. The two tables must be kept in step; a test
+comparing them is planned for the testing phase.

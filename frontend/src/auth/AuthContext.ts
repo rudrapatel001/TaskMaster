@@ -3,7 +3,7 @@ import type { User } from '../lib/api'
 
 export type AuthState =
   | { status: 'loading' } // still checking whether the visitor has a session
-  | { status: 'anonymous' } // not logged in
+  | { status: 'anonymous'; reason?: 'logout' } // not logged in; reason says if they chose to log out
   | { status: 'authenticated'; user: User }
 
 export interface AuthContextValue {

@@ -45,7 +45,7 @@ export function NameForm({ user, onSaved }: { user: User; onSaved: (user: User) 
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} noValidate className="mt-10 rounded-xl bg-slate-800 p-6">
-      <h2 className="font-semibold">Your profile</h2>
+      <h2 className="font-semibold">Name</h2>
 
       <TextField
         id="profile-name"
