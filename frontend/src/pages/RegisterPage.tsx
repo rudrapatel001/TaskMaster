@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Link, Navigate, useNavigate } from 'react-router-dom'
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { TextField } from '../components/TextField'
 import { api, ApiError } from '../lib/api'
@@ -23,9 +23,16 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>
 
+interface LocationState {
+  from?: { pathname: string }
+}
+
 export function RegisterPage() {
   const { state, login } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
+  const locationState = location.state as LocationState | null
+  const destination = locationState?.from?.pathname ?? '/' // for example an invitation link
   const [formError, setFormError] = useState<string | null>(null)
 
   const {
@@ -36,7 +43,7 @@ export function RegisterPage() {
   } = useForm<FormValues>({ resolver: zodResolver(schema) })
 
   if (state.status === 'authenticated') {
-    return <Navigate to="/" replace />
+    return <Navigate to={destination} replace />
   }
 
   async function onSubmit(values: FormValues) {
@@ -64,9 +71,12 @@ export function RegisterPage() {
     // The account exists now. Log in with the same details.
     try {
       await login(values.email, values.password)
-      navigate('/', { replace: true })
+      navigate(destination, { replace: true })
     } catch {
-      navigate('/login', { replace: true, state: { notice: 'Account created. Please log in.' } })
+      navigate('/login', {
+        replace: true,
+        state: { notice: 'Account created. Please log in.', from: locationState?.from },
+      })
     }
   }
 
@@ -120,7 +130,7 @@ export function RegisterPage() {
 
         <p className="mt-6 text-center text-sm text-slate-400">
           Already have an account?{' '}
-          <Link to="/login" className="text-indigo-300 hover:underline">
+          <Link to="/login" state={locationState} className="text-indigo-300 hover:underline">
             Log in
           </Link>
         </p>

@@ -112,7 +112,7 @@ export function LoginPage() {
 
         <p className="mt-6 text-center text-sm text-slate-400">
           New here?{' '}
-          <Link to="/register" className="text-indigo-300 hover:underline">
+          <Link to="/register" state={locationState} className="text-indigo-300 hover:underline">
             Create an account
           </Link>
         </p>

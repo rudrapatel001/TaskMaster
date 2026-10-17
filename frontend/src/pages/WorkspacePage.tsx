@@ -1,6 +1,7 @@
 import { Link, useParams } from 'react-router-dom'
 import { QueryError } from '../components/QueryError'
 import { RoleBadge } from '../components/RoleBadge'
+import { WorkspaceNav } from '../components/WorkspaceNav'
 import { WorkspaceSettings } from '../components/WorkspaceSettings'
 import { useWorkspaces } from '../lib/workspaces'
 
@@ -32,7 +33,8 @@ export function WorkspacePage() {
         <h1 className="text-3xl font-bold">{workspace.name}</h1>
         <RoleBadge role={workspace.role} />
       </div>
-      <p className="mt-2 text-slate-400">Projects and tasks will appear here.</p>
+      <WorkspaceNav slug={workspace.slug} />
+      <p className="mt-6 text-slate-400">Projects and tasks will appear here.</p>
 
       {/* key: switching workspaces resets the forms below instead of reusing their old values */}
       <WorkspaceSettings key={workspace.id} workspace={workspace} />

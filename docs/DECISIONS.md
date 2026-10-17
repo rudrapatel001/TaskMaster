@@ -433,3 +433,20 @@ remembered, so the next person to log in is not sent to the previous user's work
 permissions.ts duplicates the backend's table to decide which buttons to show. If the server still refuses
 (role changed behind the page's back), its message is shown. The two tables must be kept in step; a test
 comparing them is planned for the testing phase.
+
+## Members UI offers only what the backend would accept
+
+permissions.ts mirrors the member rules (rolesYouCanGrant, canRemoveMember, rolesYouCanInvite), so dropdowns
+and buttons list only permitted choices. When the server still refuses (stale page, last owner), its message
+is shown and the list is refetched.
+
+## The invitation link is shown once, with a copy button
+
+The token exists only in the creation response, so the UI shows the link right then. To "resend", invite the
+same email again, which replaces the old link.
+
+## The accept page works logged out, and brings you back after login or registration
+
+/invite/:token is outside the login wall and shows a public preview. Log in and Create account pass the
+current location along, so the flow ends on the invitation. Logged in with a different email shows a warning
+and no accept button (the server would refuse anyway).
