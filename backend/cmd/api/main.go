@@ -57,6 +57,8 @@ func run() error {
 	workspaceService := services.NewWorkspaceService(workspaceRepo)
 	invitationRepo := repository.NewInvitationRepository(pool)
 	invitationService := services.NewInvitationService(invitationRepo)
+	projectRepo := repository.NewProjectRepository(pool)
+	projectService := services.NewProjectService(projectRepo)
 
 	handler := router.New(router.Deps{
 		Logger:          logger,
@@ -68,6 +70,7 @@ func run() error {
 		Authenticate:    middleware.Authenticate(tokenManager),
 		WorkspaceAccess: middleware.WorkspaceAccess(workspaceService, logger),
 		Invitations:     handlers.NewInvitationHandler(invitationService, logger),
+		Projects:        handlers.NewProjectHandler(projectService, logger),
 	})
 
 	srv := &http.Server{

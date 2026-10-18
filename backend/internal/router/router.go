@@ -24,6 +24,7 @@ type Deps struct {
 	Users          *handlers.UserHandler
 	Workspaces     *handlers.WorkspaceHandler
 	Invitations    *handlers.InvitationHandler
+	Projects       *handlers.ProjectHandler
 
 	// Authenticate protects routes that need a login.
 	Authenticate func(http.Handler) http.Handler
@@ -100,6 +101,17 @@ func New(d Deps) http.Handler {
 			r.With(middleware.RequirePermission(permissions.MembersInvite)).Get("/invitations", d.Invitations.List)
 			r.With(middleware.RequirePermission(permissions.MembersInvite)).Post("/invitations", d.Invitations.Create)
 			r.With(middleware.RequirePermission(permissions.MembersInvite)).Delete("/invitations/{invitationID}", d.Invitations.Revoke)
+
+			r.Route("/projects", func(r chi.Router) {
+				r.With(middleware.RequirePermission(permissions.ProjectView)).Get("/", d.Projects.List)
+				r.With(middleware.RequirePermission(permissions.ProjectManage)).Post("/", d.Projects.Create)
+
+				r.Route("/{projectID}", func(r chi.Router) {
+					r.With(middleware.RequirePermission(permissions.ProjectView)).Get("/", d.Projects.Get)
+					r.With(middleware.RequirePermission(permissions.ProjectManage)).Patch("/", d.Projects.Update)
+					r.With(middleware.RequirePermission(permissions.ProjectManage)).Delete("/", d.Projects.Delete)
+				})
+			})
 		})
 	})
 

@@ -87,3 +87,8 @@ func OneOf(s string, allowed ...string) bool {
 func UUID(s string) bool {
 	return uuidPattern.MatchString(s)
 }
+
+// Matches is true if s matches the pattern.
+func Matches(s string, pattern *regexp.Regexp) bool {
+	return pattern.MatchString(s)
+}

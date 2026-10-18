@@ -450,3 +450,20 @@ same email again, which replaces the old link.
 /invite/:token is outside the login wall and shows a public preview. Log in and Create account pass the
 current location along, so the flow ends on the invitation. Logged in with a different email shows a warning
 and no accept button (the server would refuse anyway).
+
+## Projects: permanent key, default columns created in the same transaction
+
+The key (2-10 capital letters/digits, unique per workspace) prefixes every task id (WEB-12), so it is chosen at
+creation and never changes (the update endpoint rejects it). Creating a project inserts its four default
+columns (To Do, In Progress, Review, Done) in one transaction, so a project never exists without columns.
+
+## Every project query is scoped by workspace
+
+Get, update and delete match on project id AND workspace id, so a project can only be reached through its own
+workspace. Prevents insecure direct object references (tested: another workspace's project id through this
+workspace's URL gives 404).
+
+## Reuse the permission table
+
+project:view for listing and reading, project:manage (admin and up) for create, edit and delete. Deleting a
+project cascades to its columns and tasks in the database; the UI must ask for confirmation.
