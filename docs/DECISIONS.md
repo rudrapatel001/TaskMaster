@@ -467,3 +467,25 @@ workspace's URL gives 404).
 
 project:view for listing and reading, project:manage (admin and up) for create, edit and delete. Deleting a
 project cascades to its columns and tasks in the database; the UI must ask for confirmation.
+
+## Task numbers come from a locked counter, not MAX()+1
+
+Creating a task locks the project row and takes projects.next_task_number in the same transaction, so
+simultaneous creations get distinct numbers (tested with 12 at once). Numbers are never reused, even after a
+soft delete. Tasks are addressed by number in URLs (WEB-12 -> /tasks/12).
+
+## Board order uses fractional positions, with automatic renumbering
+
+A move gives the task the position halfway between its new neighbours, so one row changes. If two neighbours
+get closer than 1e-6 the column is renumbered to 1000, 2000, ... and the move retried. The API takes
+"put it directly above task N" (null = bottom) instead of raw numbers, so the server decides positions.
+
+## PATCH tells "missing" from "null" with request.Optional
+
+Missing leaves a field alone; null clears nullable fields (assignee, due date). Changing a task's column goes
+through the move endpoint, not PATCH.
+
+## Lists are filtered, paged and sorted through fixed choices
+
+Sort names select fixed ORDER BY clauses (no user input in SQL text); search escapes LIKE wildcards; limit is
+capped at 200; responses carry meta.total. Deleting is soft (deleted_at); everything is scoped by workspace.

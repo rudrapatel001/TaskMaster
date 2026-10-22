@@ -25,6 +25,7 @@ type Deps struct {
 	Workspaces     *handlers.WorkspaceHandler
 	Invitations    *handlers.InvitationHandler
 	Projects       *handlers.ProjectHandler
+	Tasks          *handlers.TaskHandler
 
 	// Authenticate protects routes that need a login.
 	Authenticate func(http.Handler) http.Handler
@@ -98,6 +99,7 @@ func New(d Deps) http.Handler {
 			r.With(middleware.RequirePermission(permissions.MembersManage)).Patch("/members/{userID}", d.Workspaces.ChangeMemberRole)
 			r.With(middleware.RequirePermission(permissions.MembersManage)).Delete("/members/{userID}", d.Workspaces.RemoveMember)
 			r.With(middleware.RequirePermission(permissions.WorkspaceLeave)).Post("/leave", d.Workspaces.Leave)
+
 			r.With(middleware.RequirePermission(permissions.MembersInvite)).Get("/invitations", d.Invitations.List)
 			r.With(middleware.RequirePermission(permissions.MembersInvite)).Post("/invitations", d.Invitations.Create)
 			r.With(middleware.RequirePermission(permissions.MembersInvite)).Delete("/invitations/{invitationID}", d.Invitations.Revoke)
@@ -110,6 +112,18 @@ func New(d Deps) http.Handler {
 					r.With(middleware.RequirePermission(permissions.ProjectView)).Get("/", d.Projects.Get)
 					r.With(middleware.RequirePermission(permissions.ProjectManage)).Patch("/", d.Projects.Update)
 					r.With(middleware.RequirePermission(permissions.ProjectManage)).Delete("/", d.Projects.Delete)
+
+					r.Route("/tasks", func(r chi.Router) {
+						r.With(middleware.RequirePermission(permissions.TaskView)).Get("/", d.Tasks.List)
+						r.With(middleware.RequirePermission(permissions.TaskWrite)).Post("/", d.Tasks.Create)
+
+						r.Route("/{number}", func(r chi.Router) {
+							r.With(middleware.RequirePermission(permissions.TaskView)).Get("/", d.Tasks.Get)
+							r.With(middleware.RequirePermission(permissions.TaskWrite)).Patch("/", d.Tasks.Update)
+							r.With(middleware.RequirePermission(permissions.TaskWrite)).Delete("/", d.Tasks.Delete)
+							r.With(middleware.RequirePermission(permissions.TaskWrite)).Post("/move", d.Tasks.Move)
+						})
+					})
 				})
 			})
 		})

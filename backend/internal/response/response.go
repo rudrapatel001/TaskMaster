@@ -60,6 +60,15 @@ func Data(w http.ResponseWriter, status int, v any) {
 	JSON(w, status, dataEnvelope{Data: v})
 }
 
+// DataMeta writes a list together with information about it, such as paging:
+// {"data": [...], "meta": {"total": 42, ...}}.
+func DataMeta(w http.ResponseWriter, status int, v any, meta any) {
+	JSON(w, status, struct {
+		Data any `json:"data"`
+		Meta any `json:"meta"`
+	}{Data: v, Meta: meta})
+}
+
 // Error writes a failure response in the standard shape:
 // {"error": {"code": "...", "message": "...", "request_id": "..."}}.
 func Error(w http.ResponseWriter, status int, code, message string) {

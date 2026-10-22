@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -59,6 +60,8 @@ func run() error {
 	invitationService := services.NewInvitationService(invitationRepo)
 	projectRepo := repository.NewProjectRepository(pool)
 	projectService := services.NewProjectService(projectRepo)
+	taskRepo := repository.NewTaskRepository(pool)
+	taskService := services.NewTaskService(taskRepo)
 
 	handler := router.New(router.Deps{
 		Logger:          logger,
@@ -67,10 +70,11 @@ func run() error {
 		Auth:            handlers.NewAuthHandler(authService, logger, cfg.SecureCookies),
 		Users:           handlers.NewUserHandler(userService, logger),
 		Workspaces:      handlers.NewWorkspaceHandler(workspaceService, logger),
-		Authenticate:    middleware.Authenticate(tokenManager),
-		WorkspaceAccess: middleware.WorkspaceAccess(workspaceService, logger),
 		Invitations:     handlers.NewInvitationHandler(invitationService, logger),
 		Projects:        handlers.NewProjectHandler(projectService, logger),
+		Tasks:           handlers.NewTaskHandler(taskService, logger),
+		Authenticate:    middleware.Authenticate(tokenManager),
+		WorkspaceAccess: middleware.WorkspaceAccess(workspaceService, logger),
 	})
 
 	srv := &http.Server{
@@ -82,10 +86,17 @@ func run() error {
 		IdleTimeout:       60 * time.Second,
 	}
 
+	// Claim the port first, so a problem (such as the port already being in
+	// use) fails right here, before we announce anything.
+	listener, err := net.Listen("tcp", srv.Addr)
+	if err != nil {
+		return fmt.Errorf("listening on %s: %w", srv.Addr, err)
+	}
+
 	serverErr := make(chan error, 1)
 	go func() {
 		logger.Info("server listening", "addr", srv.Addr, "env", cfg.Env)
-		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		if err := srv.Serve(listener); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			serverErr <- err
 		}
 	}()
