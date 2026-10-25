@@ -34,7 +34,9 @@ export function WorkspacePage() {
         <RoleBadge role={workspace.role} />
       </div>
       <WorkspaceNav slug={workspace.slug} />
-      <p className="mt-6 text-slate-400">Projects and tasks will appear here.</p>
+      <Link to={`/w/${workspace.slug}/projects`} className="mt-6 inline-block text-indigo-300 hover:underline">
+        Open projects →
+      </Link>
 
       {/* key: switching workspaces resets the forms below instead of reusing their old values */}
       <WorkspaceSettings key={workspace.id} workspace={workspace} />

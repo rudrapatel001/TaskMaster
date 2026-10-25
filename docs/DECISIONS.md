@@ -489,3 +489,24 @@ through the move endpoint, not PATCH.
 
 Sort names select fixed ORDER BY clauses (no user input in SQL text); search escapes LIKE wildcards; limit is
 capped at 200; responses carry meta.total. Deleting is soft (deleted_at); everything is scoped by workspace.
+
+## The board is built from three cached queries
+
+A project's columns, its tasks (limit 200), and the workspace members (to show assignee initials) are fetched
+with TanStack Query and combined in the page: for each column, filter tasks by status and sort by position.
+Creating a task appends it to the cache, because the server always puts new tasks at the bottom of a column.
+
+## Reusable gates and headers
+
+WorkspaceGate handles loading, errors and "workspace not found" for any page that needs the workspace in the
+URL; WorkspaceHeader shows its name, role and tabs. Pages describe only what to show once they have data.
+
+## Keys are suggested, then yours
+
+The new-project form suggests a key from the name until the user edits the key. Keys are permanent, so they
+are shown with that warning. Boards use the key in the URL (/w/team/projects/WEB), which reads like the task
+ids (WEB-12).
+
+## Permissions again hide, never protect
+
+"New project" needs project:manage and "+ Add task" needs task:write in the UI; the server checks both anyway.

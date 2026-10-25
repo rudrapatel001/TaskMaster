@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useParams } from 'react-router-dom'
 import { api } from './api'
 import type { Role } from './permissions'
 
@@ -66,4 +67,11 @@ export function useLeaveWorkspace() {
     mutationFn: (id: string) => api<void>(`/workspaces/${id}/leave`, { method: 'POST' }),
     onSuccess: (_result, id) => removeFromCache(queryClient, id),
   })
+}
+
+/** The workspace named in the URL (/w/:slug/...), found in the user's list. */
+export function useCurrentWorkspace() {
+  const { slug } = useParams()
+  const { data, isPending, isError, refetch } = useWorkspaces()
+  return { workspace: data?.find((w) => w.slug === slug), isPending, isError, refetch }
 }

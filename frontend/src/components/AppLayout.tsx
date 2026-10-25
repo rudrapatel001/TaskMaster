@@ -1,4 +1,4 @@
-import { Link, Outlet } from 'react-router-dom'
+import { Link, Outlet, useMatch } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { WorkspaceSwitcher } from './WorkspaceSwitcher'
 
@@ -6,6 +6,7 @@ import { WorkspaceSwitcher } from './WorkspaceSwitcher'
 export function AppLayout() {
   const { state, logout } = useAuth()
   const name = state.status === 'authenticated' ? state.user.name : ''
+  const isBoard = useMatch('/w/:slug/projects/:key') !== null // boards need the full width
 
   return (
     <div className="min-h-screen bg-slate-900 text-white">
@@ -26,7 +27,7 @@ export function AppLayout() {
         </nav>
       </header>
 
-      <main className="mx-auto max-w-3xl px-4 py-10">
+      <main className={`mx-auto px-4 py-10 ${isBoard ? 'max-w-none' : 'max-w-3xl'}`}>
         <Outlet />
       </main>
     </div>

@@ -12,6 +12,9 @@ export function WorkspaceNav({ slug }: { slug: string }) {
       <NavLink to={`/w/${slug}`} end className={tab}>
         Overview
       </NavLink>
+      <NavLink to={`/w/${slug}/projects`} className={tab}>
+        Projects
+      </NavLink>
       <NavLink to={`/w/${slug}/members`} className={tab}>
         Members
       </NavLink>
