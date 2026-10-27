@@ -10,7 +10,7 @@ function initials(name: string): string {
     .join('')
 }
 
-/** One card on the board. */
+/** The look of one card. (The dragging behaviour is added by SortableTaskCard.) */
 export function TaskCard({
   task,
   assigneeName,
@@ -25,7 +25,7 @@ export function TaskCard({
   const overdue = !done && task.due_date !== null && task.due_date < today
 
   return (
-    <li className="rounded-lg bg-slate-800 p-3 shadow ring-1 ring-slate-700">
+    <div className="rounded-lg bg-slate-800 p-3 shadow ring-1 ring-slate-700">
       <p className="text-xs text-slate-400">{task.identifier}</p>
       <p className="mt-1 text-sm">{task.title}</p>
 
@@ -47,6 +47,6 @@ export function TaskCard({
           </span>
         )}
       </div>
-    </li>
+    </div>
   )
 }

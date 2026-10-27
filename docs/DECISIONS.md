@@ -510,3 +510,30 @@ ids (WEB-12).
 ## Permissions again hide, never protect
 
 "New project" needs project:manage and "+ Add task" needs task:write in the UI; the server checks both anyway.
+
+## Moves are optimistic, with rollback and a final reload
+
+Dropping a card updates the cached task list at once using the same "halfway between neighbours" arithmetic as
+the server (board.ts: applyMove), then sends the move. On failure the previous list is restored; on completion
+the tasks are reloaded so the board always converges to the server (which may have renumbered a column).
+
+## The drop is reported as "directly above task N"
+
+After a drag the board computes the column's final order and sends the number of the card that now follows
+the moved one (null = bottom). The server decides positions, so concurrent edits cannot corrupt ordering.
+
+## Dragging works on a working copy
+
+While dragging, a copy of the columns (not the real data) is rearranged, so cards can preview in another column.
+Dropping back where it started sends nothing.
+
+## Pointer and keyboard are both first-class
+
+5 px of pointer movement starts a drag (clicks still open the task); Space lifts/drops with the keyboard,
+arrows move, Escape cancels, Enter opens. The open task is in the URL (?task=12), so it is linkable and
+Back closes it.
+
+## Known gaps, to do later
+
+No UI yet for renaming/deleting projects; custom columns cannot be added or renamed (the backend only has the
+four defaults); deleted tasks cannot be restored (the data is kept); the board loads up to 200 tasks.
