@@ -5,6 +5,8 @@ import type { Status } from '../lib/projects'
 import type { Task, TaskPatch } from '../lib/tasks'
 import { useDeleteTask, useUpdateTask } from '../lib/tasks'
 import { PriorityBadge } from './PriorityBadge'
+import type { Role } from '../lib/permissions'
+import { Comments } from './Comments'
 
 const priorities: Task['priority'][] = ['low', 'medium', 'high', 'urgent']
 
@@ -19,6 +21,8 @@ export function TaskPanel({
   statuses,
   members,
   canWrite,
+  role,
+  myUserId,
   onMove,
   onClose,
 }: {
@@ -28,6 +32,8 @@ export function TaskPanel({
   statuses: Status[]
   members: Member[]
   canWrite: boolean
+  role: Role
+  myUserId: string
   onMove: (statusId: string) => void
   onClose: () => void
 }) {
@@ -214,7 +220,13 @@ export function TaskPanel({
         <PriorityBadge priority={task.priority} />
         Created {new Date(task.created_at).toLocaleDateString()}
       </p>
-
+      <Comments
+        workspaceId={workspaceId}
+        projectId={projectId}
+        taskNumber={task.number}
+        role={role}
+        myUserId={myUserId}
+      />
       {canWrite && (
         <div className="mt-8 border-t border-slate-800 pt-6">
           {!confirmingDelete ? (

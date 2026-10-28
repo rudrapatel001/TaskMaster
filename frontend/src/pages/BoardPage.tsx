@@ -11,6 +11,7 @@ import {
 } from '@dnd-kit/core'
 import type { DragEndEvent, DragOverEvent, DragStartEvent } from '@dnd-kit/core'
 import { arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable'
+import { useAuth } from '../auth/AuthContext'
 import { BoardColumn } from '../components/BoardColumn'
 import { QueryError } from '../components/QueryError'
 import { TaskCard } from '../components/TaskCard'
@@ -70,6 +71,7 @@ function Board({ workspace, project }: { workspace: Workspace; project: Project 
   const tasks = useTasks(workspace.id, project.id)
   const members = useMembers(workspace.id)
   const { move, isError: moveFailed, reset: resetMoveError } = useMoveTask(workspace.id, project.id)
+  const { state: auth } = useAuth()
   const canWrite = can(workspace.role, 'task:write')
   const [today] = useState(() => new Date().toLocaleDateString('en-CA')) // decided once, so every card agrees
 
@@ -264,6 +266,8 @@ function Board({ workspace, project }: { workspace: Workspace; project: Project 
           statuses={statuses}
           members={memberList}
           canWrite={canWrite}
+          role={workspace.role}
+          myUserId={auth.status === 'authenticated' ? auth.user.id : ''}
           onMove={(statusId) => move({ number: openTask.number, statusId, before: null })}
           onClose={closePanel}
         />

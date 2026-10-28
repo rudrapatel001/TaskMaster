@@ -537,3 +537,20 @@ Back closes it.
 
 No UI yet for renaming/deleting projects; custom columns cannot be added or renamed (the backend only has the
 four defaults); deleted tasks cannot be restored (the data is kept); the board loads up to 200 tasks.
+
+## Comments: author edits, moderators delete, nobody rewrites someone else's words
+
+CanEditComment (author AND still allowed to comment) and CanDeleteComment (author, or comment:moderate for
+admins and owners) are small pure functions, unit-tested for every role. The routes for editing and deleting
+only require task:view; the service loads the comment and decides by authorship.
+
+## Comments survive their author
+
+comments.author_id is emptied when an account is deleted and the API shows "Deleted user", so discussions
+are not lost. Comments are hard-deleted. Everything is reached through project and workspace (tasks are
+located first, then their comments), so another workspace's comment ids are unreachable.
+
+## Comment threads cache separately from the task list
+
+Their query key is its own branch, so reloading tasks after a drag does not reload comments.
+Limit: a thread loads in full (no paging yet); a comment can be at most 5000 characters.

@@ -62,6 +62,8 @@ func run() error {
 	projectService := services.NewProjectService(projectRepo)
 	taskRepo := repository.NewTaskRepository(pool)
 	taskService := services.NewTaskService(taskRepo)
+	commentRepo := repository.NewCommentRepository(pool)
+	commentService := services.NewCommentService(commentRepo)
 
 	handler := router.New(router.Deps{
 		Logger:          logger,
@@ -75,6 +77,7 @@ func run() error {
 		Tasks:           handlers.NewTaskHandler(taskService, logger),
 		Authenticate:    middleware.Authenticate(tokenManager),
 		WorkspaceAccess: middleware.WorkspaceAccess(workspaceService, logger),
+		Comments:        handlers.NewCommentHandler(commentService, logger),
 	})
 
 	srv := &http.Server{

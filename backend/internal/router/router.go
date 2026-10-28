@@ -26,6 +26,7 @@ type Deps struct {
 	Invitations    *handlers.InvitationHandler
 	Projects       *handlers.ProjectHandler
 	Tasks          *handlers.TaskHandler
+	Comments       *handlers.CommentHandler
 
 	// Authenticate protects routes that need a login.
 	Authenticate func(http.Handler) http.Handler
@@ -122,6 +123,10 @@ func New(d Deps) http.Handler {
 							r.With(middleware.RequirePermission(permissions.TaskWrite)).Patch("/", d.Tasks.Update)
 							r.With(middleware.RequirePermission(permissions.TaskWrite)).Delete("/", d.Tasks.Delete)
 							r.With(middleware.RequirePermission(permissions.TaskWrite)).Post("/move", d.Tasks.Move)
+							r.With(middleware.RequirePermission(permissions.TaskView)).Get("/comments", d.Comments.List)
+							r.With(middleware.RequirePermission(permissions.CommentWrite)).Post("/comments", d.Comments.Create)
+							r.With(middleware.RequirePermission(permissions.TaskView)).Patch("/comments/{commentID}", d.Comments.Update)
+							r.With(middleware.RequirePermission(permissions.TaskView)).Delete("/comments/{commentID}", d.Comments.Delete)
 						})
 					})
 				})
