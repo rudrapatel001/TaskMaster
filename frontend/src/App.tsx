@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import { ProtectedRoute } from './auth/ProtectedRoute'
 import { AppLayout } from './components/AppLayout'
 import { AcceptInvitePage } from './pages/AcceptInvitePage'
+import { ActivityPage } from './pages/ActivityPage'
 import { BoardPage } from './pages/BoardPage'
 import { CreateWorkspacePage } from './pages/CreateWorkspacePage'
 import { LoginPage } from './pages/LoginPage'
@@ -29,6 +30,7 @@ function App() {
           <Route path="/w/:slug" element={<WorkspacePage />} />
           <Route path="/w/:slug/projects" element={<ProjectsPage />} />
           <Route path="/w/:slug/projects/:key" element={<BoardPage />} />
+          <Route path="/w/:slug/activity" element={<ActivityPage />} />
           <Route path="/w/:slug/members" element={<MembersPage />} />
           <Route path="/profile" element={<ProfilePage />} />
         </Route>

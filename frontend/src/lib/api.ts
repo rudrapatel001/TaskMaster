@@ -78,7 +78,8 @@ function send(path: string, { method = 'GET', body, auth = true }: RequestOption
   })
 }
 
-// The two shapes the backend answers with: {"data": ...} or {"error": {...}}.
+// The shapes the backend answers with: {"data": ...}, {"data": [...], "meta": {...}}
+// for lists, or {"error": {...}} for failures.
 interface ResponseBody {
   data?: unknown
   error?: {
@@ -113,11 +114,10 @@ async function parse<T>(res: Response): Promise<T> {
 }
 
 /**
- * Calls the API and returns the "data" part of the response.
- * If the access token has expired (401), it refreshes the session once and
- * retries the request, so callers never notice.
+ * Sends a request. If the access token has expired (401), it refreshes the
+ * session once and tries again, so callers never notice.
  */
-export async function api<T>(path: string, options: RequestOptions = {}): Promise<T> {
+async function call(path: string, options: RequestOptions): Promise<Response> {
   const tokenUsed = accessToken // remember which token this request was sent with
   let res = await send(path, options)
 
@@ -134,7 +134,21 @@ export async function api<T>(path: string, options: RequestOptions = {}): Promis
     if (res.status === 401) onSessionExpired?.()
   }
 
-  return parse<T>(res)
+  return res
+}
+
+/** Calls the API and returns the "data" part of the response. */
+export async function api<T>(path: string, options: RequestOptions = {}): Promise<T> {
+  return parse<T>(await call(path, options))
+}
+
+/** Like api(), for lists that come with a "meta" section (such as paging information). */
+export async function apiPage<T, M>(path: string, options: RequestOptions = {}): Promise<{ data: T; meta: M }> {
+  const res = await call(path, options)
+  const copy = res.clone() // a body can be read only once, and parse() reads it
+  const data = await parse<T>(res) // throws an ApiError for failures, exactly like api()
+  const body = (await copy.json()) as { meta?: M }
+  return { data, meta: body.meta as M }
 }
 
 // If several requests discover an expired token at the same moment, they all

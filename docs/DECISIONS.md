@@ -554,3 +554,27 @@ located first, then their comments), so another workspace's comment ids are unre
 
 Their query key is its own branch, so reloading tasks after a drag does not reload comments.
 Limit: a thread loads in full (no paging yet); a comment can be at most 5000 characters.
+
+## Activity is recorded by a middleware that opts routes in, after success
+
+RecordTaskActivity(recorder, "task.moved") wraps a route; only 2xx responses are recorded; it runs inside the
+permission checks. Chosen over recording in every handler (touches tested code, easy to forget one) and over
+database triggers (the database does not know the acting user). Trade-off: the entry is written just after the
+change, not in the same transaction, so a crash in between could lose one. That is acceptable for a feed; a
+compliance-grade audit log would need the transactional approach. Recording failures are logged, never shown.
+
+## Entries are snapshots
+
+The recorder looks the task up and stores its identifier, title and (for moves) the new column's NAME in a JSON
+metadata column, so the feed still reads correctly after renames and deletions. Deleted tasks can still be
+recorded because deletes are soft.
+
+## The feed is paged with cursors, not offsets
+
+"Everything older than (time, id)", encoded as an opaque string, fetching limit+1 rows to know if there is
+another page. Offsets would show duplicates while new entries keep arriving at the top.
+
+## Known gaps, to do later
+
+Updates do not say which fields changed; only task events and comments are recorded (no project or member
+events yet); the per-task feed does not refresh by itself (it has a Refresh button).

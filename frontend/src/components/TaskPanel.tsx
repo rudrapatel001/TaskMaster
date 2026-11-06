@@ -7,6 +7,7 @@ import { useDeleteTask, useUpdateTask } from '../lib/tasks'
 import { PriorityBadge } from './PriorityBadge'
 import type { Role } from '../lib/permissions'
 import { Comments } from './Comments'
+import { TaskActivity } from './TaskActivity'
 
 const priorities: Task['priority'][] = ['low', 'medium', 'high', 'urgent']
 
@@ -41,6 +42,7 @@ export function TaskPanel({
   const remove = useDeleteTask(workspaceId, projectId)
   const [error, setError] = useState<string | null>(null)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
+  const [activityOpen, setActivityOpen] = useState(false)
   const panelRef = useRef<HTMLElement>(null)
 
   // Focus the panel when it opens or switches task, and close it with Escape.
@@ -227,6 +229,17 @@ export function TaskPanel({
         role={role}
         myUserId={myUserId}
       />
+      <details
+        className="mt-8 border-t border-slate-800 pt-6"
+        onToggle={(event) => setActivityOpen(event.currentTarget.open)}
+      >
+        <summary className="cursor-pointer font-semibold">Activity</summary>
+        {activityOpen && (
+          <div className="mt-4">
+            <TaskActivity key={task.id} workspaceId={workspaceId} projectId={projectId} taskNumber={task.number} />
+          </div>
+        )}
+      </details>
       {canWrite && (
         <div className="mt-8 border-t border-slate-800 pt-6">
           {!confirmingDelete ? (

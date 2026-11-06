@@ -64,20 +64,24 @@ func run() error {
 	taskService := services.NewTaskService(taskRepo)
 	commentRepo := repository.NewCommentRepository(pool)
 	commentService := services.NewCommentService(commentRepo)
+	activityRepo := repository.NewActivityRepository(pool)
+	activityService := services.NewActivityService(activityRepo, logger)
 
 	handler := router.New(router.Deps{
-		Logger:          logger,
-		AllowedOrigins:  cfg.CORSOrigins,
-		Health:          &handlers.HealthHandler{DB: pool, Logger: logger},
-		Auth:            handlers.NewAuthHandler(authService, logger, cfg.SecureCookies),
-		Users:           handlers.NewUserHandler(userService, logger),
-		Workspaces:      handlers.NewWorkspaceHandler(workspaceService, logger),
-		Invitations:     handlers.NewInvitationHandler(invitationService, logger),
-		Projects:        handlers.NewProjectHandler(projectService, logger),
-		Tasks:           handlers.NewTaskHandler(taskService, logger),
-		Authenticate:    middleware.Authenticate(tokenManager),
-		WorkspaceAccess: middleware.WorkspaceAccess(workspaceService, logger),
-		Comments:        handlers.NewCommentHandler(commentService, logger),
+		Logger:           logger,
+		AllowedOrigins:   cfg.CORSOrigins,
+		Health:           &handlers.HealthHandler{DB: pool, Logger: logger},
+		Auth:             handlers.NewAuthHandler(authService, logger, cfg.SecureCookies),
+		Users:            handlers.NewUserHandler(userService, logger),
+		Workspaces:       handlers.NewWorkspaceHandler(workspaceService, logger),
+		Invitations:      handlers.NewInvitationHandler(invitationService, logger),
+		Projects:         handlers.NewProjectHandler(projectService, logger),
+		Tasks:            handlers.NewTaskHandler(taskService, logger),
+		Authenticate:     middleware.Authenticate(tokenManager),
+		WorkspaceAccess:  middleware.WorkspaceAccess(workspaceService, logger),
+		Comments:         handlers.NewCommentHandler(commentService, logger),
+		Activity:         handlers.NewActivityHandler(activityService, logger),
+		ActivityRecorder: activityService,
 	})
 
 	srv := &http.Server{

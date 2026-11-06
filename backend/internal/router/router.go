@@ -27,6 +27,10 @@ type Deps struct {
 	Projects       *handlers.ProjectHandler
 	Tasks          *handlers.TaskHandler
 	Comments       *handlers.CommentHandler
+	Activity       *handlers.ActivityHandler
+
+	// ActivityRecorder writes entries to the activity feed when task routes succeed.
+	ActivityRecorder middleware.TaskActivityRecorder
 
 	// Authenticate protects routes that need a login.
 	Authenticate func(http.Handler) http.Handler
@@ -60,6 +64,12 @@ func New(d Deps) http.Handler {
 		response.Error(w, http.StatusMethodNotAllowed, response.CodeMethodNotAllowed, "method not allowed")
 	})
 
+	// record turns on activity recording for a route (see middleware/activity.go):
+	// after the route succeeds, an entry with this action is added to the feed.
+	record := func(action string) func(http.Handler) http.Handler {
+		return middleware.RecordTaskActivity(d.ActivityRecorder, action)
+	}
+
 	r.Get("/health", d.Health.Check)
 
 	// Anyone holding an invitation link may see what it is for, before logging in.
@@ -81,6 +91,7 @@ func New(d Deps) http.Handler {
 		r.Get("/me", d.Users.Me)
 		r.Patch("/me", d.Users.UpdateMe)
 
+		// Accepting needs a login: the invitation must match your account's email.
 		r.With(middleware.RateLimit(10, time.Minute)).Post("/invitations/{token}/accept", d.Invitations.Accept)
 
 		r.Post("/workspaces", d.Workspaces.Create)
@@ -105,6 +116,9 @@ func New(d Deps) http.Handler {
 			r.With(middleware.RequirePermission(permissions.MembersInvite)).Post("/invitations", d.Invitations.Create)
 			r.With(middleware.RequirePermission(permissions.MembersInvite)).Delete("/invitations/{invitationID}", d.Invitations.Revoke)
 
+			// Everything that happened in this workspace, newest first.
+			r.With(middleware.RequirePermission(permissions.WorkspaceView)).Get("/activity", d.Activity.Workspace)
+
 			r.Route("/projects", func(r chi.Router) {
 				r.With(middleware.RequirePermission(permissions.ProjectView)).Get("/", d.Projects.List)
 				r.With(middleware.RequirePermission(permissions.ProjectManage)).Post("/", d.Projects.Create)
@@ -116,17 +130,21 @@ func New(d Deps) http.Handler {
 
 					r.Route("/tasks", func(r chi.Router) {
 						r.With(middleware.RequirePermission(permissions.TaskView)).Get("/", d.Tasks.List)
-						r.With(middleware.RequirePermission(permissions.TaskWrite)).Post("/", d.Tasks.Create)
+						r.With(middleware.RequirePermission(permissions.TaskWrite), record("task.created")).Post("/", d.Tasks.Create)
 
 						r.Route("/{number}", func(r chi.Router) {
 							r.With(middleware.RequirePermission(permissions.TaskView)).Get("/", d.Tasks.Get)
-							r.With(middleware.RequirePermission(permissions.TaskWrite)).Patch("/", d.Tasks.Update)
-							r.With(middleware.RequirePermission(permissions.TaskWrite)).Delete("/", d.Tasks.Delete)
-							r.With(middleware.RequirePermission(permissions.TaskWrite)).Post("/move", d.Tasks.Move)
+							r.With(middleware.RequirePermission(permissions.TaskWrite), record("task.updated")).Patch("/", d.Tasks.Update)
+							r.With(middleware.RequirePermission(permissions.TaskWrite), record("task.deleted")).Delete("/", d.Tasks.Delete)
+							r.With(middleware.RequirePermission(permissions.TaskWrite), record("task.moved")).Post("/move", d.Tasks.Move)
+
 							r.With(middleware.RequirePermission(permissions.TaskView)).Get("/comments", d.Comments.List)
-							r.With(middleware.RequirePermission(permissions.CommentWrite)).Post("/comments", d.Comments.Create)
+							r.With(middleware.RequirePermission(permissions.CommentWrite), record("task.commented")).Post("/comments", d.Comments.Create)
+							// Who may edit or delete depends on who wrote the comment, so the service decides.
 							r.With(middleware.RequirePermission(permissions.TaskView)).Patch("/comments/{commentID}", d.Comments.Update)
 							r.With(middleware.RequirePermission(permissions.TaskView)).Delete("/comments/{commentID}", d.Comments.Delete)
+
+							r.With(middleware.RequirePermission(permissions.TaskView)).Get("/activity", d.Activity.Task)
 						})
 					})
 				})
