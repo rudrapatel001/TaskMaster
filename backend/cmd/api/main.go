@@ -66,6 +66,10 @@ func run() error {
 	commentService := services.NewCommentService(commentRepo)
 	activityRepo := repository.NewActivityRepository(pool)
 	activityService := services.NewActivityService(activityRepo, logger)
+	notificationRepo := repository.NewNotificationRepository(pool)
+	notificationService := services.NewNotificationService(notificationRepo, logger)
+	// One task event feeds both the activity feed and notifications.
+	taskEvents := services.NewTaskEvents(activityService, notificationService)
 
 	handler := router.New(router.Deps{
 		Logger:           logger,
@@ -81,7 +85,8 @@ func run() error {
 		WorkspaceAccess:  middleware.WorkspaceAccess(workspaceService, logger),
 		Comments:         handlers.NewCommentHandler(commentService, logger),
 		Activity:         handlers.NewActivityHandler(activityService, logger),
-		ActivityRecorder: activityService,
+		ActivityRecorder: taskEvents,
+		Notifications:    handlers.NewNotificationHandler(notificationService, logger),
 	})
 
 	srv := &http.Server{

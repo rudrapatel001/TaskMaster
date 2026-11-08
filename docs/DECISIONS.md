@@ -578,3 +578,34 @@ another page. Offsets would show duplicates while new entries keep arriving at t
 
 Updates do not say which fields changed; only task events and comments are recorded (no project or member
 events yet); the per-task feed does not refresh by itself (it has a Refresh button).
+
+## Notifications come from the same task events as the activity feed
+
+The recorder middleware reports each successful task change as a TaskEvent; a small fan-out (services.TaskEvents)
+hands it to the activity feed and to NotificationService. For edits the middleware also reads the request's field
+names (putting the body back for the handler), so "assignee_id was sent" is known: the response always shows the
+current assignee, and without that flag every unrelated edit would re-notify them. Feed entries for edits now
+list the fields that changed.
+
+## Who is notified
+
+Assigned: the person given a task (on create, or when an edit sets the assignee). Commented: the task's assignee
+and reporter. Never the person who did it; duplicates are collapsed. The rules are a table-driven unit test with
+a fake store. People who left the workspace are skipped in SQL. Failures are logged, never shown to the user.
+
+## The bell polls every 30 seconds
+
+Polling one cheap indexed count (the partial index on unread rows) is the simplest thing that works and survives
+any proxy; TanStack Query pauses it in background tabs and refreshes on focus. Server-sent events or WebSockets
+would be instant but need long-lived connections; they are on the stretch list.
+
+## Notifications belong to a person, and are snapshots
+
+One bell across all workspaces; every query filters by user_id, so ids of other people's notifications are 404.
+Each row stores identifier, title and the workspace slug, so it still reads and links correctly after renames.
+The type column has a CHECK listing the kinds, so adding a kind needs a migration (typos cannot sneak in).
+
+## Known gaps, to do later
+
+One notification per comment (no grouping); no mentions or per-user settings; no clean-up of old notifications;
+no email; the bell is up to 30 seconds behind.

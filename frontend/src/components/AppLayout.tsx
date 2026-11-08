@@ -1,5 +1,6 @@
 import { Link, Outlet, useMatch } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
+import { NotificationBell } from './NotificationBell'
 import { WorkspaceSwitcher } from './WorkspaceSwitcher'
 
 /** The frame around every logged-in page: a header with navigation, then the page. */
@@ -17,6 +18,7 @@ export function AppLayout() {
           </Link>
           <WorkspaceSwitcher />
           <div className="ml-auto flex items-center gap-4 text-sm">
+            <NotificationBell />
             <Link to="/profile" className="text-slate-300 hover:text-white">
               {name}
             </Link>

@@ -28,6 +28,7 @@ type Deps struct {
 	Tasks          *handlers.TaskHandler
 	Comments       *handlers.CommentHandler
 	Activity       *handlers.ActivityHandler
+	Notifications  *handlers.NotificationHandler
 
 	// ActivityRecorder writes entries to the activity feed when task routes succeed.
 	ActivityRecorder middleware.TaskActivityRecorder
@@ -90,6 +91,12 @@ func New(d Deps) http.Handler {
 
 		r.Get("/me", d.Users.Me)
 		r.Patch("/me", d.Users.UpdateMe)
+
+		// Your own notifications (the bell). They belong to you, not to a workspace.
+		r.Get("/notifications", d.Notifications.List)
+		r.Get("/notifications/unread-count", d.Notifications.UnreadCount)
+		r.Post("/notifications/read-all", d.Notifications.MarkAllRead)
+		r.Post("/notifications/{notificationID}/read", d.Notifications.MarkRead)
 
 		// Accepting needs a login: the invitation must match your account's email.
 		r.With(middleware.RateLimit(10, time.Minute)).Post("/invitations/{token}/accept", d.Invitations.Accept)

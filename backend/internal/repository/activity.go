@@ -53,6 +53,9 @@ func (r *ActivityRepository) RecordTask(ctx context.Context, e models.TaskEvent)
 	if e.Action == "task.moved" {
 		metadata["to"] = column
 	}
+	if len(e.Fields) > 0 {
+		metadata["fields"] = e.Fields
+	}
 	for key, value := range e.Extra {
 		metadata[key] = value
 	}

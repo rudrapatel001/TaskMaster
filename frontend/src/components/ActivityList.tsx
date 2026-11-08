@@ -19,6 +19,24 @@ function when(iso: string): string {
   return new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
 }
 
+// How the field names the backend uses read in a sentence.
+const fieldNames: Record<string, string> = {
+  title: 'title',
+  description: 'description',
+  priority: 'priority',
+  assignee_id: 'assignee',
+  due_date: 'due date',
+}
+
+/** "priority, due date" from the list of fields an edit changed. Empty if unknown. */
+function changedFields(value: unknown): string {
+  if (!Array.isArray(value)) return ''
+  return value
+    .filter((field): field is string => typeof field === 'string')
+    .map((field) => fieldNames[field] ?? field)
+    .join(', ')
+}
+
 /** "WEB-12 Fix login", as a link that opens that task on its board when it can. */
 function TaskRef({ event, workspaceSlug }: { event: ActivityEvent; workspaceSlug?: string }) {
   const identifier = text(event.metadata.identifier)
@@ -51,8 +69,15 @@ function describe(event: ActivityEvent, subject: ReactNode): ReactNode {
           moved {subject} to <strong className="font-medium">{text(event.metadata.to)}</strong>
         </>
       )
-    case 'task.updated':
-      return <>updated {subject}</>
+    case 'task.updated': {
+      const fields = changedFields(event.metadata.fields)
+      return (
+        <>
+          updated {subject}
+          {fields && <span className="text-slate-400"> ({fields})</span>}
+        </>
+      )
+    }
     case 'task.deleted':
       return <>deleted {subject}</>
     case 'task.commented': {
