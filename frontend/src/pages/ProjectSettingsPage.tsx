@@ -1,4 +1,5 @@
 import { Link, useParams } from 'react-router-dom'
+import { ColumnsSettings } from '../components/ColumnsSettings'
 import { DeleteProjectSection } from '../components/DeleteProjectSection'
 import { ProjectSettingsForm } from '../components/ProjectSettingsForm'
 import { QueryError } from '../components/QueryError'
@@ -61,6 +62,7 @@ function Settings({ workspace, projectKey }: { workspace: Workspace; projectKey:
       <div className="mt-6 max-w-2xl space-y-6">
         {/* key: switching project starts the form fresh instead of keeping the old values */}
         <ProjectSettingsForm key={project.id} workspaceId={workspace.id} project={project} />
+        <ColumnsSettings key={`columns-${project.id}`} workspaceId={workspace.id} projectId={project.id} />
         <DeleteProjectSection workspaceId={workspace.id} workspaceSlug={workspace.slug} project={project} />
       </div>
     </div>

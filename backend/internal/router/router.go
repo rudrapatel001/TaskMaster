@@ -29,6 +29,7 @@ type Deps struct {
 	Comments       *handlers.CommentHandler
 	Activity       *handlers.ActivityHandler
 	Notifications  *handlers.NotificationHandler
+	Statuses       *handlers.StatusHandler
 
 	// ActivityRecorder writes entries to the activity feed when task routes succeed.
 	ActivityRecorder middleware.TaskActivityRecorder
@@ -134,6 +135,17 @@ func New(d Deps) http.Handler {
 					r.With(middleware.RequirePermission(permissions.ProjectView)).Get("/", d.Projects.Get)
 					r.With(middleware.RequirePermission(permissions.ProjectManage)).Patch("/", d.Projects.Update)
 					r.With(middleware.RequirePermission(permissions.ProjectManage)).Delete("/", d.Projects.Delete)
+
+					// Board columns. Everyone can SEE them (they come with the project); changing them is for admins.
+					r.Route("/statuses", func(r chi.Router) {
+						r.With(middleware.RequirePermission(permissions.ProjectManage)).Post("/", d.Statuses.Create)
+
+						r.Route("/{statusID}", func(r chi.Router) {
+							r.With(middleware.RequirePermission(permissions.ProjectManage)).Patch("/", d.Statuses.Update)
+							r.With(middleware.RequirePermission(permissions.ProjectManage)).Delete("/", d.Statuses.Delete)
+							r.With(middleware.RequirePermission(permissions.ProjectManage)).Post("/move", d.Statuses.Move)
+						})
+					})
 
 					r.Route("/tasks", func(r chi.Router) {
 						r.With(middleware.RequirePermission(permissions.TaskView)).Get("/", d.Tasks.List)

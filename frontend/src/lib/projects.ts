@@ -83,6 +83,66 @@ export function useDeleteProject(workspaceId: string) {
   })
 }
 
+// ---- Board columns (a project's statuses) ----
+
+export type StatusCategory = Status['category']
+
+const projectKey = (workspaceId: string, projectId: string) => [...projectsKey(workspaceId), projectId] as const
+
+/** Adds a column at the end of the board. */
+export function useCreateStatus(workspaceId: string, projectId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (input: { name: string; category: StatusCategory }) =>
+      api<Status>(`/workspaces/${workspaceId}/projects/${projectId}/statuses`, { method: 'POST', body: input }),
+    // Reload the project, so the board and the settings page both show the new column.
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: projectKey(workspaceId, projectId), exact: true }),
+  })
+}
+
+/** Renames a column and/or changes its category. Fields left out stay as they are. */
+export function useUpdateStatus(workspaceId: string, projectId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, ...changes }: { id: string; name?: string; category?: StatusCategory }) =>
+      api<Status>(`/workspaces/${workspaceId}/projects/${projectId}/statuses/${id}`, {
+        method: 'PATCH',
+        body: changes,
+      }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: projectKey(workspaceId, projectId), exact: true }),
+  })
+}
+
+/** Puts a column directly before another one, or last when before is null. */
+export function useMoveStatus(workspaceId: string, projectId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, before }: { id: string; before: string | null }) =>
+      api<Status[]>(`/workspaces/${workspaceId}/projects/${projectId}/statuses/${id}/move`, {
+        method: 'POST',
+        body: { before },
+      }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: projectKey(workspaceId, projectId), exact: true }),
+  })
+}
+
+/** Deletes a column. Its tasks move to the column named by moveTo. */
+export function useDeleteStatus(workspaceId: string, projectId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, moveTo }: { id: string; moveTo: string }) =>
+      api<void>(`/workspaces/${workspaceId}/projects/${projectId}/statuses/${id}?move_to=${moveTo}`, {
+        method: 'DELETE',
+      }),
+    // The tasks changed column too, so reload them as well as the project.
+    onSuccess: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: projectKey(workspaceId, projectId), exact: true }),
+        queryClient.invalidateQueries({ queryKey: [...projectKey(workspaceId, projectId), 'tasks'] }),
+      ]),
+  })
+}
+
 /** Suggests a project key from its name: "Website" becomes "WEB". Empty if no sensible key. */
 export function suggestKey(name: string): string {
   const key = name.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 3)

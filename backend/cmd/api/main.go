@@ -70,6 +70,8 @@ func run() error {
 	notificationService := services.NewNotificationService(notificationRepo, logger)
 	// One task event feeds both the activity feed and notifications.
 	taskEvents := services.NewTaskEvents(activityService, notificationService)
+	statusRepo := repository.NewStatusRepository(pool)
+	statusService := services.NewStatusService(statusRepo)
 
 	handler := router.New(router.Deps{
 		Logger:           logger,
@@ -87,6 +89,7 @@ func run() error {
 		Activity:         handlers.NewActivityHandler(activityService, logger),
 		ActivityRecorder: taskEvents,
 		Notifications:    handlers.NewNotificationHandler(notificationService, logger),
+		Statuses:         handlers.NewStatusHandler(statusService, logger),
 	})
 
 	srv := &http.Server{

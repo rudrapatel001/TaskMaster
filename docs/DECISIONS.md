@@ -621,3 +621,27 @@ server enforces the same rule. The key is displayed but locked (it prefixes ever
 The key (short, exact, case-sensitive) is the confirmation. After the delete, the project's cache branch (columns,
 tasks, comments, feed) is removed so nothing stale lingers. The database cascades to tasks, comments, columns and
 notifications; activity entries stay as snapshots (their links to the deleted tasks stop working).
+
+## Deleting a column asks where its tasks go
+
+The server refuses to delete a column that has live tasks unless move_to names another column of the project;
+the UI always asks. Tasks move to the bottom of the target, keeping their order, in the same transaction as
+the delete. Hidden (soft-deleted) tasks move too: the tasks -> columns foreign key has no ON DELETE action, so
+the database refuses to drop a column anything still points to. With no move_to and only hidden tasks, they go
+to the project's first other column. A project always keeps one column and has at most 12.
+
+## Column changes lock the project, like task creation does
+
+Create, rename, reorder and delete each run in a transaction that locks the project row, so they cannot
+interleave with task creation or drags in the same project. Names are unique per project ignoring capitals
+(the existing unique index; its error becomes a 409).
+
+## Reordering sends "put this column directly before X"
+
+With at most 12 columns the server just renumbers them 1000, 2000, ... in the new order (the pure reorder function
+is unit-tested), instead of the fractional positions tasks use. The UI's up/down buttons translate to that.
+
+## The category says what a column means
+
+todo / in_progress / done is chosen per column and editable, independent of the name. For now it affects how
+overdue dates are shown; later reports can build on it.
