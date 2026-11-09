@@ -50,6 +50,39 @@ export function useCreateProject(workspaceId: string) {
   })
 }
 
+/** Changes a project's name and description. Its key can never change. */
+export function useUpdateProject(workspaceId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, name, description }: { id: string; name: string; description: string }) =>
+      api<Project>(`/workspaces/${workspaceId}/projects/${id}`, { method: 'PATCH', body: { name, description } }),
+    // Update the list and, if it is loaded, the project's own page, so the new name shows everywhere at once.
+    onSuccess: (updated) => {
+      queryClient.setQueryData<Project[]>(projectsKey(workspaceId), (old) =>
+        (old ?? []).map((project) => (project.id === updated.id ? updated : project)),
+      )
+      queryClient.setQueryData<ProjectDetail>([...projectsKey(workspaceId), updated.id], (old) =>
+        old ? { ...old, ...updated } : old,
+      )
+    },
+  })
+}
+
+/** Deletes a project, with all its tasks, comments and columns. */
+export function useDeleteProject(workspaceId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => api<void>(`/workspaces/${workspaceId}/projects/${id}`, { method: 'DELETE' }),
+    onSuccess: (_result, id) => {
+      queryClient.setQueryData<Project[]>(projectsKey(workspaceId), (old) =>
+        (old ?? []).filter((project) => project.id !== id),
+      )
+      // Forget everything cached under this project: its columns, tasks, comments and feed.
+      queryClient.removeQueries({ queryKey: [...projectsKey(workspaceId), id] })
+    },
+  })
+}
+
 /** Suggests a project key from its name: "Website" becomes "WEB". Empty if no sensible key. */
 export function suggestKey(name: string): string {
   const key = name.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 3)

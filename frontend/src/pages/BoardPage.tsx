@@ -191,6 +191,14 @@ function Board({ workspace, project }: { workspace: Workspace; project: Project 
         <div className="mt-2 flex items-center gap-3">
           <span className="rounded bg-indigo-500/20 px-2 py-0.5 text-sm font-medium text-indigo-300">{project.key}</span>
           <h2 className="text-2xl font-semibold">{project.name}</h2>
+          {can(workspace.role, 'project:manage') && (
+            <Link
+              to={`/w/${workspace.slug}/projects/${project.key}/settings`}
+              className="ml-2 rounded-md px-2 py-1 text-sm text-slate-400 hover:bg-slate-800 hover:text-white"
+            >
+              Settings
+            </Link>
+          )}
         </div>
         {project.description && <p className="mt-1 text-sm text-slate-400">{project.description}</p>}
       </div>

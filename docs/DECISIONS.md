@@ -609,3 +609,15 @@ The type column has a CHECK listing the kinds, so adding a kind needs a migratio
 
 One notification per comment (no grouping); no mentions or per-user settings; no clean-up of old notifications;
 no email; the bell is up to 30 seconds behind.
+
+## Project settings live on their own page, behind project:manage
+
+/w/:slug/projects/:key/settings holds rename/description and delete, linked from the board header for admins
+and owners. People without the permission who open the URL get a plain explanation instead of the forms; the
+server enforces the same rule. The key is displayed but locked (it prefixes every task id).
+
+## Deleting a project asks for its key, and clears everything cached under it
+
+The key (short, exact, case-sensitive) is the confirmation. After the delete, the project's cache branch (columns,
+tasks, comments, feed) is removed so nothing stale lingers. The database cascades to tasks, comments, columns and
+notifications; activity entries stay as snapshots (their links to the deleted tasks stop working).

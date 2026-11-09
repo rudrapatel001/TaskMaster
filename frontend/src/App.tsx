@@ -8,6 +8,7 @@ import { CreateWorkspacePage } from './pages/CreateWorkspacePage'
 import { LoginPage } from './pages/LoginPage'
 import { MembersPage } from './pages/MembersPage'
 import { ProfilePage } from './pages/ProfilePage'
+import { ProjectSettingsPage } from './pages/ProjectSettingsPage'
 import { ProjectsPage } from './pages/ProjectsPage'
 import { RegisterPage } from './pages/RegisterPage'
 import { RootRedirect } from './pages/RootRedirect'
@@ -30,6 +31,7 @@ function App() {
           <Route path="/w/:slug" element={<WorkspacePage />} />
           <Route path="/w/:slug/projects" element={<ProjectsPage />} />
           <Route path="/w/:slug/projects/:key" element={<BoardPage />} />
+          <Route path="/w/:slug/projects/:key/settings" element={<ProjectSettingsPage />} />
           <Route path="/w/:slug/activity" element={<ActivityPage />} />
           <Route path="/w/:slug/members" element={<MembersPage />} />
           <Route path="/profile" element={<ProfilePage />} />
