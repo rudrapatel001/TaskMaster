@@ -645,3 +645,28 @@ is unit-tested), instead of the fractional positions tasks use. The UI's up/down
 
 todo / in_progress / done is chosen per column and editable, independent of the name. For now it affects how
 overdue dates are shown; later reports can build on it.
+
+## Shortcut logic is a pure function, separate from React
+
+interpretKey(state, keyInfo) decides what a key means (given a pending "g"), so it is unit-tested without a
+browser. Rules: Ctrl/Cmd+K works everywhere; every other shortcut is ignored while typing in a box and with
+Ctrl/Cmd/Alt held (Ctrl+C still copies); capital letters are ignored (Caps Lock); a lone "g" is forgotten after
+1.5 seconds. Single-key shortcuts are disabled while a dialog is open.
+
+## The command palette is an accessible combobox
+
+Linked input and listbox (aria-controls / aria-activedescendant), a polite live region for status, focus held
+in the box (Tab is trapped), focus restored on close, Escape stops propagating so it does not also close a
+task panel behind it. Commands run after the palette has unmounted so they can place focus themselves.
+
+## Tasks are found by a server search; everything else filters locally
+
+Pages, projects, workspaces and actions are already known to the browser. Tasks are not, so
+GET /workspaces/{id}/search?q= matches titles (ILIKE, LIKE wildcards escaped) and exact identifiers like
+"web-12" (listed first). It needs 2+ characters, returns at most 20, is workspace-scoped, and skips deleted
+tasks. The browser debounces typing by 200 ms. A trigram index is the upgrade if a workspace ever gets huge.
+
+## "c" reaches the board through a browser event
+
+The shortcut layer and the board are far apart in the tree, so "c" fires a window event which the first
+column's add-task box listens for. Decoupled, and the palette's "Add a task" uses the same event.

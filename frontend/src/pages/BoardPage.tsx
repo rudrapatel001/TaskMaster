@@ -235,9 +235,10 @@ function Board({ workspace, project }: { workspace: Workspace; project: Project 
           onDragCancel={onDragCancel}
         >
           <div className="mt-6 flex items-start gap-4 overflow-x-auto pb-4">
-            {statuses.map((status) => (
+            {statuses.map((status, index) => (
               <BoardColumn
                 key={status.id}
+                isFirst={index === 0}
                 status={status}
                 taskIds={columns[status.id] ?? []}
                 tasksById={tasksById}

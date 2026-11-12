@@ -1,25 +1,38 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { ApiError } from '../lib/api'
+import { ADD_TASK_EVENT } from '../lib/shortcuts'
 import { useCreateTask } from '../lib/tasks'
 
 /**
  * "+ Add task" at the bottom of a column. It stays open after adding, so
  * several tasks can be typed in a row: Enter adds, Escape closes.
+ *
+ * With listenForShortcut, pressing "c" (or choosing "Add a task" in the command
+ * palette) opens it. Only the first column of a board does this.
  */
 export function AddTaskForm({
   workspaceId,
   projectId,
   statusId,
+  listenForShortcut = false,
 }: {
   workspaceId: string
   projectId: string
   statusId: string
+  listenForShortcut?: boolean
 }) {
   const create = useCreateTask(workspaceId, projectId)
   const [open, setOpen] = useState(false)
   const [title, setTitle] = useState('')
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!listenForShortcut) return
+    const openForm = () => setOpen(true)
+    window.addEventListener(ADD_TASK_EVENT, openForm)
+    return () => window.removeEventListener(ADD_TASK_EVENT, openForm)
+  }, [listenForShortcut])
 
   function close() {
     setOpen(false)

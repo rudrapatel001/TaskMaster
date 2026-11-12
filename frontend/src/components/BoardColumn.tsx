@@ -13,6 +13,7 @@ export function BoardColumn({
   nameById,
   today,
   canWrite,
+  isFirst,
   workspaceId,
   projectId,
   onOpenTask,
@@ -23,6 +24,7 @@ export function BoardColumn({
   nameById: Map<string, string>
   today: string
   canWrite: boolean
+  isFirst: boolean
   workspaceId: string
   projectId: string
   onOpenTask: (number: number) => void
@@ -64,7 +66,14 @@ export function BoardColumn({
         </SortableContext>
       </div>
 
-      {canWrite && <AddTaskForm workspaceId={workspaceId} projectId={projectId} statusId={status.id} />}
+      {canWrite && (
+        <AddTaskForm
+          workspaceId={workspaceId}
+          projectId={projectId}
+          statusId={status.id}
+          listenForShortcut={isFirst}
+        />
+      )}
     </section>
   )
 }

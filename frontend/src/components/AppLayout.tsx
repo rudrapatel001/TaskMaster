@@ -1,5 +1,6 @@
 import { Link, Outlet, useMatch } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
+import { KeyboardLayer } from './keyboardLayer'
 import { NotificationBell } from './NotificationBell'
 import { WorkspaceSwitcher } from './WorkspaceSwitcher'
 
@@ -17,6 +18,7 @@ export function AppLayout() {
             TaskMaster
           </Link>
           <WorkspaceSwitcher />
+          <KeyboardLayer />
           <div className="ml-auto flex items-center gap-4 text-sm">
             <NotificationBell />
             <Link to="/profile" className="text-slate-300 hover:text-white">

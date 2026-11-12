@@ -30,6 +30,7 @@ type Deps struct {
 	Activity       *handlers.ActivityHandler
 	Notifications  *handlers.NotificationHandler
 	Statuses       *handlers.StatusHandler
+	Search         *handlers.SearchHandler
 
 	// ActivityRecorder writes entries to the activity feed when task routes succeed.
 	ActivityRecorder middleware.TaskActivityRecorder
@@ -126,6 +127,9 @@ func New(d Deps) http.Handler {
 
 			// Everything that happened in this workspace, newest first.
 			r.With(middleware.RequirePermission(permissions.WorkspaceView)).Get("/activity", d.Activity.Workspace)
+
+			// Find tasks by title or identifier (used by the command palette).
+			r.With(middleware.RequirePermission(permissions.WorkspaceView)).Get("/search", d.Search.Search)
 
 			r.Route("/projects", func(r chi.Router) {
 				r.With(middleware.RequirePermission(permissions.ProjectView)).Get("/", d.Projects.List)

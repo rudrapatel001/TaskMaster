@@ -72,6 +72,8 @@ func run() error {
 	taskEvents := services.NewTaskEvents(activityService, notificationService)
 	statusRepo := repository.NewStatusRepository(pool)
 	statusService := services.NewStatusService(statusRepo)
+	searchRepo := repository.NewSearchRepository(pool)
+	searchService := services.NewSearchService(searchRepo)
 
 	handler := router.New(router.Deps{
 		Logger:           logger,
@@ -90,6 +92,7 @@ func run() error {
 		ActivityRecorder: taskEvents,
 		Notifications:    handlers.NewNotificationHandler(notificationService, logger),
 		Statuses:         handlers.NewStatusHandler(statusService, logger),
+		Search:           handlers.NewSearchHandler(searchService, logger),
 	})
 
 	srv := &http.Server{
